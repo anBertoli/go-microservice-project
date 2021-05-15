@@ -240,7 +240,7 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 		return store.Keys{}, store.Permissions{}, store.ErrRecordNotFound
 	}
 
-	oldPermissions, err := us.Store.Permissions.GetAllForKey(auth.Keys.AuthKeyHash, true)
+	oldPermissions, err := us.Store.Permissions.GetAllForKey(targetKeys.AuthKeyHash, true)
 	if err != nil {
 		return store.Keys{}, store.Permissions{}, err
 	}
@@ -273,7 +273,7 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 		return store.ErrRecordNotFound
 	}
 
-	oldPermissions, err := us.Store.Permissions.GetAllForKey(auth.Keys.AuthKeyHash, true)
+	oldPermissions, err := us.Store.Permissions.GetAllForKey(targetKeys.AuthKeyHash, true)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -313,6 +314,22 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 			}
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+// The default behaviour, if a panics happens inside our handlers, is: unwind the stack for
+// the affected goroutine (calling any deferred functions along the way), close the underlying
+// HTTP connection, and log an error message and stack trace. This is ok, but it would be
+// nicer to recover from the panic and send a proper HTTP 500 error.
+func (app *application) recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				w.Header().Set("Connection", "close")
+				app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
+			}
+		}()
 		next.ServeHTTP(w, r)
 	})
 }

@@ -78,6 +78,7 @@ func (app *application) handler() http.Handler {
 		}
 	}
 
+	handler = app.recoverPanic(handler)
 	handler = app.logging(handler)
 	return handler
 }
