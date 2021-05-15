@@ -76,3 +76,7 @@ func (vm *ValidationMiddleware) EditUserKey(ctx context.Context, keyID int64, pe
 func (vm *ValidationMiddleware) DeleteUserKey(ctx context.Context, keyID int64) error {
 	return vm.Next.DeleteUserKey(ctx, keyID)
 }
+
+func (vm *ValidationMiddleware) GetStats(ctx context.Context) (store.Stats, error) {
+	return vm.Next.GetStats(ctx)
+}

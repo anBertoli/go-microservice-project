@@ -18,12 +18,7 @@ type Service interface {
 	Delete(ctx context.Context, imageID int64) (store.Image, error)
 }
 
-var (
-	ErrForbidden       = errors.New("forbidden")
-	ErrMaxSpaceReached = errors.New("max space reached")
-	ErrNotFound        = errors.New("not found")
-	ErrConflict        = errors.New("conflict")
-)
+var ErrMaxSpaceReached = errors.New("max space reached")
 
 var _ Service = &ImagesService{}
 var _ Service = &AuthMiddleware{}

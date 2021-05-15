@@ -18,11 +18,7 @@ type Service interface {
 	Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error)
 }
 
-var (
-	ErrForbidden = errors.New("forbidden")
-	ErrConflict  = errors.New("conflict")
-	ErrBusy      = errors.New("busy")
-)
+var ErrBusy = errors.New("busy")
 
 var _ Service = &GalleriesService{}
 var _ Service = &AuthMiddleware{}

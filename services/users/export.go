@@ -18,6 +18,8 @@ type Service interface {
 	AddUserKey(ctx context.Context, permissions store.Permissions) (store.Keys, error)
 	EditUserKey(ctx context.Context, keyID int64, permissions store.Permissions) (store.Keys, store.Permissions, error)
 	DeleteUserKey(ctx context.Context, keyID int64) error
+
+	GetStats(ctx context.Context) (store.Stats, error)
 }
 
 type KeysList struct {
@@ -26,12 +28,7 @@ type KeysList struct {
 	Permissions store.Permissions `json:"permissions"`
 }
 
-var (
-	ErrEditConflict = errors.New("conflict")
-	ErrForbidden    = errors.New("forbidden")
-	ErrNotFound     = errors.New("not found")
-	ErrMainKeysEdit = errors.New("main keys not editable")
-)
+var ErrMainKeysEdit = errors.New("main keys not editable")
 
 var _ Service = &UsersService{}
 var _ Service = &AuthMiddleware{}

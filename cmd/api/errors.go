@@ -24,8 +24,8 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 		app.emailTakenResponse(w, r)
 	case errors.Is(err, store.ErrRecordNotFound):
 		app.notFoundResponse(w, r)
-
-	// auth errors
+	case errors.Is(err, store.ErrEditConflict):
+		app.editConflictResponse(w, r)
 	case errors.Is(err, store.ErrUnauthenticated):
 		app.unauthenticatedResponse(w, r)
 	case errors.Is(err, store.ErrForbidden):
@@ -36,30 +36,16 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 		app.wrongPermissionsResponse(w, r)
 
 	// users service errors
-	case errors.Is(err, users.ErrForbidden):
-		app.forbiddenResponse(w, r)
-	case errors.Is(err, users.ErrEditConflict):
-		app.editConflictResponse(w, r)
-	case errors.Is(err, users.ErrNotFound):
-		app.notFoundResponse(w, r)
 	case errors.Is(err, users.ErrMainKeysEdit):
 		app.notEditableKeysResponse(w, r)
 
 	// galleries service errors
-	case errors.Is(err, galleries.ErrForbidden):
-		app.forbiddenResponse(w, r)
-	case errors.Is(err, galleries.ErrConflict):
-		app.editConflictResponse(w, r)
 	case errors.Is(err, galleries.ErrBusy):
 		app.tooBusyResponse(w, r)
 
 	// images service errors
-	case errors.Is(err, images.ErrNotFound):
-		app.notFoundResponse(w, r)
-	case errors.Is(err, images.ErrForbidden):
-		app.forbiddenResponse(w, r)
-	case errors.Is(err, images.ErrConflict):
-		app.editConflictResponse(w, r)
+	case errors.Is(err, images.ErrMaxSpaceReached):
+		app.maxSpaceReachedResponse(w, r)
 
 	// default to 500 errors
 	default:
@@ -217,6 +203,15 @@ func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),
 		status:  http.StatusTooManyRequests,
+		err:     err,
+	})
+}
+
+func (app *application) maxSpaceReachedResponse(w http.ResponseWriter, r *http.Request) {
+	err := errors.New("max space reached, delete some images and retry")
+	app.sendJSONError(w, r, errResponse{
+		message: err.Error(),
+		status:  http.StatusNotAcceptable,
 		err:     err,
 	})
 }

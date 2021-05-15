@@ -40,7 +40,8 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
 
-	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getAuthenticatedUserHandler)
+	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getUserAccountHandler)
+	router.Methods(http.MethodGet).Path("/v1/users/stats").HandlerFunc(app.getUserStatsHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/keys").HandlerFunc(app.listUserKeysHandler)
 	router.Methods(http.MethodPost).Path("/v1/users/keys").HandlerFunc(app.addUserKeyHandler)
 	router.Methods(http.MethodPut).Path("/v1/users/keys/{id}").HandlerFunc(app.editKeyPermissionsHandler)

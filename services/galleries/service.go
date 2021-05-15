@@ -71,7 +71,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 		return store.Gallery{}, err
 	}
 	if authData.User.ID != galleryToUpdate.UserID {
-		return store.Gallery{}, ErrForbidden
+		return store.Gallery{}, store.ErrForbidden
 	}
 
 	gallery, err = gs.store.Galleries.Update(store.Gallery{
@@ -83,7 +83,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Gallery{}, ErrConflict
+			return store.Gallery{}, store.ErrEditConflict
 		default:
 			return store.Gallery{}, err
 		}
@@ -100,14 +100,14 @@ func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
 		return err
 	}
 	if authData.User.ID != galleryToDelete.UserID {
-		return ErrForbidden
+		return store.ErrForbidden
 	}
 
 	err = gs.store.Galleries.DeleteGallery(galleryID)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return ErrConflict
+			return store.ErrEditConflict
 		default:
 			return err
 		}
@@ -127,7 +127,7 @@ func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (stor
 	}
 	if !gallery.Published {
 		if authData.User.ID != gallery.UserID {
-			return store.Gallery{}, nil, ErrForbidden
+			return store.Gallery{}, nil, store.ErrForbidden
 		}
 	}
 

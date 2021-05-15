@@ -58,6 +58,7 @@ VALUES
     ('keys:create'),
     ('keys:update'),
     ('keys:delete'),
+    ('users:stats'),
 
     ('galleries:public_list'),
     ('galleries:list'),

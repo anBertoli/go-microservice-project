@@ -102,7 +102,7 @@ func (app *application) recoverKeyHandler(w http.ResponseWriter, r *http.Request
 	app.sendJSON(w, r, http.StatusOK, env{"keys": key}, nil)
 }
 
-func (app *application) getAuthenticatedUserHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Request) {
 	authData := store.ContextGetAuth(r.Context())
 	if authData == nil {
 		app.unauthenticatedResponse(w, r)
@@ -110,4 +110,14 @@ func (app *application) getAuthenticatedUserHandler(w http.ResponseWriter, r *ht
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"user": authData.User, "keys": authData.Keys, "permissions": authData.Permissions}, nil)
+}
+
+func (app *application) getUserStatsHandler(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.users.GetStats(r.Context())
+	if err != nil {
+		app.encodeError(w, r, err)
+		return
+	}
+
+	app.sendJSON(w, r, http.StatusOK, env{"stats": stats}, nil)
 }

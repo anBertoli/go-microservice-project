@@ -57,3 +57,11 @@ func (am *AuthMiddleware) DeleteUserKey(ctx context.Context, keyID int64) error 
 	}
 	return am.Next.DeleteUserKey(ctx, keyID)
 }
+
+func (am *AuthMiddleware) GetStats(ctx context.Context) (store.Stats, error) {
+	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionGetStats)
+	if err != nil {
+		return store.Stats{}, err
+	}
+	return am.Next.GetStats(ctx)
+}

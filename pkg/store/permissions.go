@@ -16,6 +16,7 @@ const (
 	PermissionCreateKeys = "keys:create"
 	PermissionUpdateKeys = "keys:update"
 	PermissionDeleteKeys = "keys:delete"
+	PermissionGetStats   = "users:stats"
 
 	PermissionListPublicGalleries = "galleries:public_list"
 	PermissionListGalleries       = "galleries:list"

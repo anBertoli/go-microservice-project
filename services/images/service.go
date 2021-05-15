@@ -30,14 +30,14 @@ func (is *ImagesService) ListAllOwned(ctx context.Context, galleryID int64, filt
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return nil, filters.Meta{}, ErrNotFound
+			return nil, filters.Meta{}, store.ErrRecordNotFound
 		default:
 			return nil, filters.Meta{}, err
 		}
 	}
 
 	if authData.User.ID != gallery.UserID {
-		return nil, filters.Meta{}, ErrForbidden
+		return nil, filters.Meta{}, store.ErrForbidden
 	}
 
 	images, metadata, err := is.Store.Images.GetAllForGallery(galleryID, filter)
@@ -55,21 +55,21 @@ func (is *ImagesService) Download(ctx context.Context, imageID int64) (store.Ima
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, nil, ErrNotFound
+			return store.Image{}, nil, store.ErrRecordNotFound
 		default:
 			return store.Image{}, nil, err
 		}
 	}
 
 	if authData.User.ID != image.UserID {
-		return store.Image{}, nil, ErrForbidden
+		return store.Image{}, nil, store.ErrForbidden
 	}
 
 	readCloser, err := is.Store.Images.GetReader(imageID)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, nil, ErrConflict
+			return store.Image{}, nil, store.ErrEditConflict
 		default:
 			return store.Image{}, nil, err
 		}
@@ -85,14 +85,14 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, ErrNotFound
+			return store.Image{}, store.ErrRecordNotFound
 		default:
 			return store.Image{}, err
 		}
 	}
 
 	if gallery.UserID != authData.User.ID {
-		return store.Image{}, ErrForbidden
+		return store.Image{}, store.ErrForbidden
 	}
 
 	image, err = is.Store.Images.Insert(reader, store.Image{
@@ -104,7 +104,7 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "image_to_galleries_fk"):
-			return store.Image{}, ErrConflict
+			return store.Image{}, store.ErrEditConflict
 		case errors.Is(err, store.ErrEmptyBytes):
 			v := validator.New()
 			v.AddError("body", "no bytes in body")
@@ -124,14 +124,14 @@ func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.I
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, ErrNotFound
+			return store.Image{}, store.ErrRecordNotFound
 		default:
 			return store.Image{}, err
 		}
 	}
 
 	if oldImage.UserID != authData.User.ID {
-		return store.Image{}, ErrForbidden
+		return store.Image{}, store.ErrForbidden
 	}
 
 	oldImage.Title = image.Title
@@ -141,7 +141,7 @@ func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.I
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "image_to_galleries_fk"):
-			return store.Image{}, ErrConflict
+			return store.Image{}, store.ErrEditConflict
 		default:
 			return store.Image{}, err
 		}
@@ -157,21 +157,21 @@ func (is *ImagesService) Delete(ctx context.Context, imageID int64) (store.Image
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, ErrNotFound
+			return store.Image{}, store.ErrRecordNotFound
 		default:
 			return store.Image{}, err
 		}
 	}
 
 	if image.UserID != authData.User.ID {
-		return store.Image{}, ErrForbidden
+		return store.Image{}, store.ErrForbidden
 	}
 
 	err = is.Store.Images.Delete(imageID)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, ErrNotFound
+			return store.Image{}, store.ErrRecordNotFound
 		default:
 			return store.Image{}, err
 		}

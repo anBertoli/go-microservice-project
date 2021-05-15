@@ -75,7 +75,7 @@ func (us *UsersService) ActivateUser(ctx context.Context, token string) (store.U
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.User{}, ErrEditConflict
+			return store.User{}, store.ErrEditConflict
 		default:
 			return store.User{}, err
 		}
@@ -237,7 +237,7 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 		}
 	}
 	if targetKeys == nil {
-		return store.Keys{}, store.Permissions{}, ErrNotFound
+		return store.Keys{}, store.Permissions{}, store.ErrRecordNotFound
 	}
 
 	oldPermissions, err := us.Store.Permissions.GetAllForKey(auth.Keys.AuthKeyHash, true)
@@ -270,7 +270,7 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 		}
 	}
 	if targetKeys == nil {
-		return ErrNotFound
+		return store.ErrRecordNotFound
 	}
 
 	oldPermissions, err := us.Store.Permissions.GetAllForKey(auth.Keys.AuthKeyHash, true)
@@ -285,11 +285,22 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return ErrEditConflict
+			return store.ErrEditConflict
 		default:
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (us *UsersService) GetStats(ctx context.Context) (store.Stats, error) {
+	auth := store.ContextGetAuth(ctx)
+
+	stats, err := us.Store.Stats.GetForUser(auth.User.ID)
+	if err != nil {
+		return store.Stats{}, err
+	}
+
+	return stats, nil
 }
