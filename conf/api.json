@@ -1,3 +1,26 @@
 {
-
+  "port": 4000,
+  "env": "prod",
+  "db": {
+    "dsn": "postgres://host:port/database?sslmode=disable",
+    "max_open_conns": 25,
+    "max_idle_conns": 25,
+    "max_idle_time": 15
+  },
+  "rate-limit": {
+    "enabled": true,
+    "per_ip": false,
+    "rps": 50,
+    "burst": 100
+  },
+  "smtp": {
+    "host": "<smtp_host>",
+    "port": 25,
+    "username": "<username>",
+    "password": "<password>>",
+    "sender": "Snap Vault <no-reply@snapvault.net>"
+  },
+  "cors": {
+    "trusted_origins": []
+  }
 }
