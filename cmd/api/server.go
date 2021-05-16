@@ -151,17 +151,11 @@ func (app *application) serve() error {
 
 // The background() helper accepts an arbitrary function as a parameter.
 func (app *application) background(fn func()) {
+	// Launch a background goroutine, which it will execute
+	// the arbitrary function that we passed as the parameter.
 	app.bgTasks.Add(1)
-
-	// Launch a background goroutine, recovering panics, if any.
 	go func() {
 		defer app.bgTasks.Done()
-		defer func() {
-			if err := recover(); err != nil {
-				app.logger.Errorf("recovering panic in background task", "err", err)
-			}
-		}()
-		// Execute the arbitrary function that we passed as the parameter.
 		fn()
 	}()
 }
