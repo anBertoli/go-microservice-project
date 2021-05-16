@@ -37,6 +37,10 @@ type config struct {
 		Password string `json:"password"`
 		Sender   string `json:"sender"`
 	} `json:"smtp"`
+	Storage struct {
+		Root     string `json:"root"`
+		MaxSpace int64  `json:"max_space"`
+	} `json:"storage"`
 	Cors struct {
 		TrustedOrigins []string `json:"trusted_origins"`
 	} `json:"cors"`

@@ -12,7 +12,7 @@ import (
 type Stats struct {
 	Galleries int       `db:"n_galleries" json:"n_galleries"`
 	Images    int       `db:"n_images" json:"n_images"`
-	Space     int       `db:"n_bytes" json:"n_bytes"`
+	Space     int64     `db:"n_bytes" json:"n_bytes"`
 	UserID    int64     `db:"user_id" json:"user_id"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 	Version   int       `db:"version" json:"-"`

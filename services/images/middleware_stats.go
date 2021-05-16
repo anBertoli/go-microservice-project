@@ -13,8 +13,9 @@ const (
 )
 
 type StatsMiddleware struct {
-	Next  Service
-	Store store.StatsStore
+	Next     Service
+	Store    store.StatsStore
+	MaxBytes int64
 }
 
 func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
@@ -36,7 +37,7 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image s
 	if err != nil {
 		return store.Image{}, err
 	}
-	if stats.Space >= maxBytes {
+	if stats.Space >= sm.MaxBytes {
 		return store.Image{}, ErrMaxSpaceReached
 	}
 

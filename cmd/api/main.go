@@ -35,7 +35,7 @@ func main() {
 		logger.Fatalf("cannot open db connection: %v", err)
 	}
 
-	storage, err := store.New(db, "./data")
+	storage, err := store.New(db, cfg.Storage.Root)
 	if err != nil {
 		logger.Fatalw("creating storage", "err", err)
 	}
@@ -59,7 +59,7 @@ func main() {
 
 	var imagesService images.Service
 	imagesService = &images.ImagesService{Store: storage}
-	imagesService = &images.StatsMiddleware{Store: storage.Stats, Next: imagesService}
+	imagesService = &images.StatsMiddleware{Store: storage.Stats, Next: imagesService, MaxBytes: cfg.Storage.MaxSpace}
 	imagesService = &images.ValidationMiddleware{Next: imagesService}
 	imagesService = &images.AuthMiddleware{Next: imagesService}
 
