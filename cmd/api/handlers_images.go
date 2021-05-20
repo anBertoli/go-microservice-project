@@ -69,10 +69,9 @@ func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	headers := http.Header{
+	app.streamBytes(w, r, readCloser, http.Header{
 		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
-	}
-	app.streamBytes(w, r, readCloser, headers)
+	})
 }
 
 const maxBodyBytes = 1024 * 1024 * 20

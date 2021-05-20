@@ -272,20 +272,19 @@ func realIP(r *http.Request) (string, error) {
 	return ip, nil
 }
 
-/*
- * If your API endpoint requires credentials (cookies or HTTP basic authentication)
- * you should also set an Access-Control-Allow-Credentials: true header in your responses.
- * If you don’t set this header, then the web browser will prevent any cross-origin responses
- * with credentials from being read by JavaScript. Importantly, you must never use the
- * wildcard Access-Control-Allow-Origin: * header in conjunction with Access-Control-Allow-Credentials: true,
- * as this would allow any website to make a credentialed cross-origin request to your API.
- */
-
 func (app *application) enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Set a Vary: Origin response header to warn any caches that the
+		// response may be different based on different origins. The same is
+		// true for Vary: Access-Control-Request-Method.
 		w.Header().Add("Vary", "Origin")
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 
+		// CORS requests have the Origin header set. If it is not present the
+		// request is not CORS so proceed normally. Note however that if the
+		// request is a CORS one but the origin is not included in our trusted
+		// origins list, the request will be served as usual.
 		origin := r.Header.Get("Origin")
 		if origin == "" {
 			next.ServeHTTP(w, r)
@@ -297,18 +296,28 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 				continue
 			}
 
+			// Set this header to communicate to the browser that it's ok to read the response. A
+			// wildcard (*) could be used here, but not in the case where the credentials are allowed
+			// (like below).
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+
+			// If your API endpoint requires credentials (cookies or HTTP basic authentication) you
+			// should also set an Access-Control-Allow-Credentials: true header in your responses.
+			// If you don’t set this header, then the web browser will prevent any cross-origin
+			// responses with credentials from being read by JavaScript.
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-			// Check if the request has the HTTP method OPTIONS and contains the
-			// "Access-Control-Request-Method" header. If it does, then we treat
-			// it as a preflight request.
+			// Check if the request has the HTTP method OPTIONS and contains the "Access-Control-Request-Method"
+			// header. If it does, then we treat it as a CORS preflight request (and normally it is).
+			// If the request doesn't have them, it is a simple CORS request. The purpose of preflight
+			// requests is to determine whether the real cross-origin request will be permitted or not.
 			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
-				// Set the necessary preflight response headers
+
+				// For preflight requests we must authorize non-CORS safe headers and HTTP methods
+				// not allowed for simple CORS requests. Also the 'Access-Control-Allow-Origin' is
+				// vital for preflight requests, but we have already set it previously.
 				w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-				// Write the headers along with a 200 OK
-				// status and return with no further action.
 				w.WriteHeader(http.StatusOK)
 				return
 			}

@@ -138,7 +138,7 @@ func (ps *PermissionsStore) ReplaceForKey(keyID int64, codes ...string) error {
 		return err
 	}
 
-	_, err = ps.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO auth_keys_permissions
 		SELECT $1, permissions.id FROM permissions WHERE permissions.code = ANY($2)
 	`, keyID, pq.Array(codes))

@@ -53,12 +53,7 @@ func (is *ImagesService) Download(ctx context.Context, imageID int64) (store.Ima
 
 	image, err := is.Store.Images.Get(imageID)
 	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, nil, store.ErrRecordNotFound
-		default:
-			return store.Image{}, nil, err
-		}
+		return store.Image{}, nil, err
 	}
 
 	if authData.User.ID != image.UserID {

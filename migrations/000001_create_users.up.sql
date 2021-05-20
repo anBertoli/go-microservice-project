@@ -50,8 +50,7 @@ CREATE TABLE IF NOT EXISTS auth_keys_permissions (
     FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE
 );
 
-INSERT INTO permissions (code)
-VALUES
+INSERT INTO permissions (code) VALUES
     ('*:*'),
 
     ('keys:list'),

@@ -37,15 +37,15 @@ func (app *application) handler() http.Handler {
 
 	router.Methods(http.MethodPost).Path("/v1/users/register").HandlerFunc(app.registerUserHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/activate").HandlerFunc(app.activateUserHandler)
-	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
-	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
-
 	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getUserAccountHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/stats").HandlerFunc(app.getUserStatsHandler)
+
 	router.Methods(http.MethodGet).Path("/v1/users/keys").HandlerFunc(app.listUserKeysHandler)
 	router.Methods(http.MethodPost).Path("/v1/users/keys").HandlerFunc(app.addUserKeyHandler)
 	router.Methods(http.MethodPut).Path("/v1/users/keys/{id}").HandlerFunc(app.editKeyPermissionsHandler)
 	router.Methods(http.MethodDelete).Path("/v1/users/keys/{id}").HandlerFunc(app.deleteUserKeyHandler)
+	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
+	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/galleries/public").HandlerFunc(app.listPublicGalleriesHandler)
 	router.Methods(http.MethodGet).Path("/v1/galleries").HandlerFunc(app.listGalleriesHandler)
@@ -67,8 +67,7 @@ func (app *application) handler() http.Handler {
 	router.NotFoundHandler = http.HandlerFunc(app.routeNotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedHandler)
 
-	handler := app.enableCORS(router)
-	handler = app.authenticate(handler)
+	handler := app.authenticate(router)
 
 	if app.config.RateLimit.Enabled {
 		if app.config.RateLimit.PerIp {
@@ -78,6 +77,7 @@ func (app *application) handler() http.Handler {
 		}
 	}
 
+	handler = app.enableCORS(handler)
 	handler = app.recoverPanic(handler)
 	handler = app.logging(handler)
 	return handler
