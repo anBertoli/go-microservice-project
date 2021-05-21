@@ -2,7 +2,7 @@
   "port": 4000,
   "env": "prod",
   "db": {
-    "dsn": "postgres://host:port/database?sslmode=disable",
+    "dsn": "postgres://snapvault:snapvault-secret-password@localhost:5432/snapvault?sslmode=disable",
     "max_open_conns": 25,
     "max_idle_conns": 25,
     "max_idle_time": 15
@@ -14,10 +14,10 @@
     "burst": 100
   },
   "smtp": {
-    "host": "<smtp_host>",
+    "host": "smtp.mailtrap.io",
     "port": 25,
-    "username": "<username>",
-    "password": "<password>>",
+    "username": "d68f9185b0074d",
+    "password": "353eeac7d856cf",
     "sender": "Snap Vault <no-reply@snapvault.net>"
   },
   "storage": {

@@ -2,4 +2,5 @@ tmp
 .DS_Store
 .idea
 /conf/*.dev.json
+/conf/*.prod.json
 bin
