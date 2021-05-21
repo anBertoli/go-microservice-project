@@ -1,7 +1,6 @@
 #!/bin/bash
 
 USERNAME=snapvault
-DB_PASSWORD=snapvault-secret-password
 
 apt update
 apt --yes upgrade
@@ -25,7 +24,6 @@ chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
 ufw allow 22
 ufw allow 80/tcp
 ufw allow 443/tcp
-ufw allow 4000/tcp # testing purpose only
 ufw --force enable
 
 
@@ -98,7 +96,7 @@ fi
 
 
 
-############### NGINX AS A SYSTEMD UNIT ###############
+############### NGINX (SYSTEMD UNIT) ###############
 
 cp /root/deploy/nginx_conf/nginx.service /lib/systemd/system/nginx.service
 systemctl enable nginx
