@@ -102,7 +102,7 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 			// reader has been completely drained this operation is a no-op.
 			err := rc.Close()
 			if err != nil {
-				logger.Errorw("error closing file reader", "err", err)
+				logger.Errorw("error closing read closer", "err", err)
 			}
 		}()
 	}

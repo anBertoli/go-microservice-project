@@ -51,3 +51,7 @@ func (sm *StatsMiddleware) Delete(ctx context.Context, galleryID int64) error {
 func (sm *StatsMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	return sm.Next.Download(ctx, galleryID)
 }
+
+func (sm *StatsMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	return sm.Next.DownloadPublic(ctx, galleryID)
+}

@@ -25,6 +25,7 @@ type Image struct {
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 	GalleryID int64     `json:"gallery_id" db:"gallery_id"`
+	Published bool      `json:"published" db:"published"`
 	UserID    int64     `json:"user_id" db:"user_id"`
 }
 
@@ -52,7 +53,7 @@ func (is *ImagesStore) Get(imageID int64) (Image, error) {
 	err := is.db.GetContext(ctx, &image, `
 		SELECT 
 			images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
-  			images.updated_at, images.gallery_id, users.id as user_id
+  			images.updated_at, images.gallery_id, users.id as user_id, galleries.published
 		FROM images 
 			LEFT JOIN galleries on images.gallery_id = galleries.id
 			LEFT JOIN users on users.id = galleries.user_id
@@ -119,7 +120,7 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 	err := is.db.SelectContext(ctx, &dbi, fmt.Sprintf(`
 		SELECT count(*) OVER(), 
 			images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
-			images.updated_at, images.gallery_id, galleries.user_id as user_id
+			images.updated_at, images.gallery_id, galleries.user_id as user_id, galleries.published
 		FROM images 
 		LEFT JOIN galleries on images.gallery_id = galleries.id
 		WHERE ((LOWER(images.%s) LIKE LOWER('%%%s%%')) OR ($1 = '')) AND published = true
@@ -165,7 +166,7 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 	err := is.db.SelectContext(ctx, &dbi, fmt.Sprintf(`
 		SELECT count(*) OVER(), 
                 images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
-				images.updated_at, images.gallery_id, users.id as user_id
+				images.updated_at, images.gallery_id, users.id as user_id, galleries.published
 		FROM images 
 			LEFT JOIN galleries on images.gallery_id = galleries.id
 			LEFT JOIN users on users.id = galleries.user_id

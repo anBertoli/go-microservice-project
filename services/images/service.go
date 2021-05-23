@@ -73,6 +73,29 @@ func (is *ImagesService) Download(ctx context.Context, imageID int64) (store.Ima
 	return image, readCloser, nil
 }
 
+func (is *ImagesService) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+	image, err := is.Store.Images.Get(imageID)
+	if err != nil {
+		return store.Image{}, nil, err
+	}
+
+	if !image.Published {
+		return store.Image{}, nil, store.ErrForbidden
+	}
+
+	readCloser, err := is.Store.Images.GetReader(imageID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrRecordNotFound):
+			return store.Image{}, nil, store.ErrEditConflict
+		default:
+			return store.Image{}, nil, err
+		}
+	}
+
+	return image, readCloser, nil
+}
+
 func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 

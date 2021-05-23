@@ -33,6 +33,10 @@ func (vm *ValidationMiddleware) ListAllOwned(ctx context.Context, galleryID int6
 	return vm.Next.ListAllOwned(ctx, galleryID, filter)
 }
 
+func (vm *ValidationMiddleware) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+	return vm.Next.DownloadPublic(ctx, imageID)
+}
+
 func (vm *ValidationMiddleware) Download(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
 	return vm.Next.Download(ctx, imageID)
 }

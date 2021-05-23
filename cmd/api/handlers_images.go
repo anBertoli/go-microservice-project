@@ -56,6 +56,24 @@ func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
+func (app *application) downloadPublicImageHandler(w http.ResponseWriter, r *http.Request) {
+	imageID, err := readIDParam(r, "image-id")
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	image, readCloser, err := app.images.DownloadPublic(r.Context(), imageID)
+	if err != nil {
+		app.encodeError(w, r, err)
+		return
+	}
+
+	app.streamBytes(w, r, readCloser, http.Header{
+		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
+	})
+}
+
 func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Request) {
 	imageID, err := readIDParam(r, "image-id")
 	if err != nil {
@@ -74,7 +92,7 @@ func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-const maxBodyBytes = 1024 * 1024 * 20
+const maxBodyBytes = 1024 * 1024 * 50
 
 func (app *application) createImageHandler(w http.ResponseWriter, r *http.Request) {
 	galleryID, err := readIDParam(r, "gallery-id")

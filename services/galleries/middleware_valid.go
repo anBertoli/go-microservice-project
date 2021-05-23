@@ -58,3 +58,7 @@ func (vm *ValidationMiddleware) Delete(ctx context.Context, galleryID int64) err
 func (vm *ValidationMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	return vm.Next.Download(ctx, galleryID)
 }
+
+func (vm *ValidationMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	return vm.Next.DownloadPublic(ctx, galleryID)
+}

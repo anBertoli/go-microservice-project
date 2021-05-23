@@ -14,10 +14,6 @@ type AuthMiddleware struct {
 }
 
 func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListPublicGalleries)
-	if err != nil {
-		return nil, filters.Meta{}, err
-	}
 	return am.Next.ListAllPublic(ctx, filter)
 }
 
@@ -27,6 +23,18 @@ func (am *AuthMiddleware) ListAllOwned(ctx context.Context, filter filters.Input
 		return nil, filters.Meta{}, err
 	}
 	return am.Next.ListAllOwned(ctx, filter)
+}
+
+func (am *AuthMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	return am.Next.DownloadPublic(ctx, galleryID)
+}
+
+func (am *AuthMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDownloadGallery)
+	if err != nil {
+		return store.Gallery{}, nil, err
+	}
+	return am.Next.Download(ctx, galleryID)
 }
 
 func (am *AuthMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
@@ -51,12 +59,4 @@ func (am *AuthMiddleware) Delete(ctx context.Context, galleryID int64) error {
 		return err
 	}
 	return am.Next.Delete(ctx, galleryID)
-}
-
-func (am *AuthMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDownloadGallery)
-	if err != nil {
-		return store.Gallery{}, nil, err
-	}
-	return am.Next.Download(ctx, galleryID)
 }

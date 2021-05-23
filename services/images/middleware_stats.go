@@ -26,6 +26,10 @@ func (sm *StatsMiddleware) ListAllOwned(ctx context.Context, galleryID int64, fi
 	return sm.Next.ListAllOwned(ctx, galleryID, filter)
 }
 
+func (sm *StatsMiddleware) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+	return sm.Next.DownloadPublic(ctx, imageID)
+}
+
 func (sm *StatsMiddleware) Download(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
 	return sm.Next.Download(ctx, imageID)
 }

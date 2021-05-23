@@ -18,19 +18,17 @@ const (
 	PermissionDeleteKeys = "keys:delete"
 	PermissionGetStats   = "users:stats"
 
-	PermissionListPublicGalleries = "galleries:public_list"
-	PermissionListGalleries       = "galleries:list"
-	PermissionCreateGallery       = "galleries:create"
-	PermissionUpdateGallery       = "galleries:update"
-	PermissionDeleteGallery       = "galleries:delete"
-	PermissionDownloadGallery     = "galleries:download"
+	PermissionListGalleries   = "galleries:list"
+	PermissionCreateGallery   = "galleries:create"
+	PermissionUpdateGallery   = "galleries:update"
+	PermissionDeleteGallery   = "galleries:delete"
+	PermissionDownloadGallery = "galleries:download"
 
-	PermissionListPublicImages = "images:public_list"
-	PermissionListImages       = "images:list"
-	PermissionCreateImage      = "images:create"
-	PermissionUpdateImage      = "images:update"
-	PermissionDeleteImage      = "images:delete"
-	PermissionDownloadImage    = "images:download"
+	PermissionListImages    = "images:list"
+	PermissionCreateImage   = "images:create"
+	PermissionUpdateImage   = "images:update"
+	PermissionDeleteImage   = "images:delete"
+	PermissionDownloadImage = "images:download"
 )
 
 type Permissions []string
@@ -40,13 +38,11 @@ var EditablePermissions = Permissions{
 	PermissionCreateKeys,
 	PermissionUpdateKeys,
 	PermissionDeleteKeys,
-	PermissionListPublicGalleries,
 	PermissionListGalleries,
 	PermissionCreateGallery,
 	PermissionUpdateGallery,
 	PermissionDeleteGallery,
 	PermissionDownloadGallery,
-	PermissionListPublicImages,
 	PermissionListImages,
 	PermissionCreateImage,
 	PermissionUpdateImage,

@@ -13,10 +13,6 @@ type AuthMiddleware struct {
 }
 
 func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListPublicImages)
-	if err != nil {
-		return nil, filters.Meta{}, err
-	}
 	return am.Next.ListAllPublic(ctx, filter)
 }
 
@@ -34,6 +30,10 @@ func (am *AuthMiddleware) Download(ctx context.Context, imageID int64) (store.Im
 		return store.Image{}, nil, err
 	}
 	return am.Next.Download(ctx, imageID)
+}
+
+func (am *AuthMiddleware) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+	return am.Next.DownloadPublic(ctx, imageID)
 }
 
 func (am *AuthMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {

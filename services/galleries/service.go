@@ -40,7 +40,6 @@ func (gs *GalleriesService) ListAllPublic(ctx context.Context, filter filters.In
 
 func (gs *GalleriesService) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
 	authData := store.ContextGetAuth(ctx)
-
 	galleries, metadata, err := gs.store.Galleries.GetAllForUser(authData.User.ID, filter)
 	if err != nil {
 		return nil, filters.Meta{}, err
@@ -119,38 +118,13 @@ func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
 func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	authData := store.ContextGetAuth(ctx)
 
-	// Get the gallery from the database. If the gallery is public everyone could download
-	// it, otherwise the authenticated user must be the owner of the gallery.
+	// Fetch the gallery and make sure the authenticated user is the owner of the gallery.
 	gallery, err := gs.store.Galleries.Get(galleryID)
 	if err != nil {
 		return store.Gallery{}, nil, err
 	}
-	if !gallery.Published {
-		if authData.User.ID != gallery.UserID {
-			return store.Gallery{}, nil, store.ErrForbidden
-		}
-	}
-
-	// Iterate over subsequent pages of images collecting all of them. The resulting list of
-	// images is needed since we must include them one by one in the archive.
-	var images []store.Image
-	var page = 1
-	for {
-		pagImages, pagOut, err := gs.store.Images.GetAllForGallery(galleryID, filters.Input{
-			Page:         page,
-			PageSize:     100,
-			SortCol:      "id",
-			SortSafeList: []string{"id"},
-			SearchCol:    "title",
-		})
-		if err != nil {
-			return store.Gallery{}, nil, err
-		}
-		images = append(images, pagImages...)
-		if pagOut.CurrentPage == pagOut.LastPage {
-			break
-		}
-		page++
+	if authData.User.ID != gallery.UserID {
+		return store.Gallery{}, nil, store.ErrForbidden
 	}
 
 	// Try to acquire a token in the semaphore and continue in case of success. If the operation
@@ -162,44 +136,112 @@ func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (stor
 		return store.Gallery{}, nil, ErrBusy
 	}
 
-	// Start a goroutine in charge of streaming the compressed tar archive to the returned reader.
+	// Start a goroutine in charge of streaming the compressed tar archive to the provided writer.
 	// It's vital to release the token of the semaphore in any case to release acquired resources.
-	// The io.Pipe is necessary to connect the streamImagesArchive func (which needs a writer) to
+	// The io.Pipe is necessary to connect the streaming function (which needs a writer) to
 	// the caller which expects a reader.
 	logger := tracing.LoggerWithRequestID(ctx, gs.logger)
 	r, w := io.Pipe()
 
 	go func() {
-		// Here the deferred function is used to make sue that, independently from
-		// the outcome of the job, the writer will be closed and the semaphore is
-		// updated.
 		defer func() {
 			_ = w.Close()
 			<-gs.sema
 		}()
 
-		err := gs.streamImagesArchive(w, images)
-
-		// This error is originated from the consumer side and we cannot do
-		// anything about that, simply drop the job. The deferred func will
-		// act normally freeing a token in the semaphore.
-		if errors.Is(err, io.ErrClosedPipe) {
-			return
-		}
-
-		// Real error coming from the internal streaming function. We log the error
-		// and we close the write end of the pipe, so that the consumer will receive
-		// the error.
+		err := gs.streamGallery(ctx, w, galleryID)
 		if err != nil {
-			logger.Errorw("streaming archive", "err", err)
-			_ = w.CloseWithError(err)
+			switch {
+			case errors.Is(err, io.ErrClosedPipe):
+				// This error is originated from the consumer side and we cannot do anything
+				// about that, simply drop the job and don't return any error.
+			default:
+				// Real error coming from the internal streaming function. Log the error and
+				// store the job into the pipe, in order to inform the caller about the error.
+				logger.Errorw("streaming gallery archive", "err", err)
+				_ = w.CloseWithError(err)
+			}
 		}
 	}()
 
 	return gallery, r, nil
 }
 
-func (gs *GalleriesService) streamImagesArchive(w io.WriteCloser, images []store.Image) error {
+func (gs *GalleriesService) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+
+	// Fetch the gallery and make sure it is public.
+	gallery, err := gs.store.Galleries.Get(galleryID)
+	if err != nil {
+		return store.Gallery{}, nil, err
+	}
+	if !gallery.Published {
+		return store.Gallery{}, nil, store.ErrForbidden
+	}
+
+	// Try to acquire a token in the semaphore and continue in case of success. See at the
+	// download function above for more details.
+	select {
+	case gs.sema <- struct{}{}:
+	default:
+		return store.Gallery{}, nil, ErrBusy
+	}
+
+	// Start a goroutine in charge of streaming the compressed tar archive to the provided writer,
+	// in the same way as explained in the download function above.
+	logger := tracing.LoggerWithRequestID(ctx, gs.logger)
+	r, w := io.Pipe()
+
+	go func() {
+		defer func() {
+			_ = w.Close()
+			<-gs.sema
+		}()
+
+		err := gs.streamGallery(ctx, w, galleryID)
+		if err != nil {
+			switch {
+			case errors.Is(err, io.ErrClosedPipe):
+				// This error is originated from the consumer side and we cannot do anything
+				// about that, simply drop the job and don't return any error.
+			default:
+				// Real error coming from the internal streaming function. Log the error and
+				// store the job into the pipe, in order to inform the caller about the error.
+				logger.Errorw("streaming gallery archive", "err", err)
+				_ = w.CloseWithError(err)
+			}
+		}
+	}()
+
+	return gallery, r, nil
+}
+
+func (gs *GalleriesService) streamGallery(ctx context.Context, w io.Writer, galleryID int64) error {
+
+	// Iterate over subsequent pages of images collecting all of them. The resulting list of
+	// images is needed since we must include them one by one in the archive. Note that for
+	// big galleries this is not optimal since we are loading the entire list of images in
+	// memory, but we must also consider that images structs are small.
+	var images []store.Image
+	var page = 1
+	for {
+		pagImages, pagOut, err := gs.store.Images.GetAllForGallery(galleryID, filters.Input{
+			Page:         page,
+			PageSize:     100,
+			SortCol:      "id",
+			SortSafeList: []string{"id"},
+			SearchCol:    "title",
+		})
+		if err != nil {
+			return err
+		}
+		images = append(images, pagImages...)
+		if pagOut.CurrentPage == pagOut.LastPage {
+			break
+		}
+		page++
+	}
+
+	//
 	gzipWriter := gzip.NewWriter(w)
 	tarWriter := tar.NewWriter(gzipWriter)
 
