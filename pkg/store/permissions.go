@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	PermissionMain = "*:*" // non editable
+	PermissionAdmin = "admin" // non editable
+	PermissionMain  = "*:*"   // non editable
 
 	PermissionListKeys   = "keys:list"
 	PermissionCreateKeys = "keys:create"

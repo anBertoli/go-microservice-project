@@ -61,8 +61,8 @@ func (app *application) handler() http.Handler {
 
 	router.Methods(http.MethodGet).Path("/v1/public/galleries").HandlerFunc(app.listPublicGalleriesHandler)
 	router.Methods(http.MethodGet).Path("/v1/public/galleries/{id}").HandlerFunc(app.downloadPublicGalleryHandler)
-	router.Methods(http.MethodGet).Path("/v1/public/galleries/images/").HandlerFunc(app.listPublicImagesHandler)
-	router.Methods(http.MethodGet).Path("/v1/public/galleries/images/{image-id}").HandlerFunc(app.downloadPublicImageHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/images").HandlerFunc(app.listPublicImagesHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/images/{image-id}").HandlerFunc(app.downloadPublicImageHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/healthcheck").HandlerFunc(app.healthcheckHandler)
 	router.Methods(http.MethodGet).Path("/v1/permissions").HandlerFunc(app.listPermissionsHandler)

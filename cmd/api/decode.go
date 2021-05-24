@@ -138,3 +138,29 @@ func readInt(qs url.Values, key string, defaultValue int) int {
 	// Otherwise, return the converted integer value.
 	return i
 }
+
+const (
+	downloadMode = "download"
+	viewMode     = "view"
+)
+
+func readImageMode(qs url.Values, key string, defaultValue string) string {
+	// Extract the value from the query string.
+	s := qs.Get(key)
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		return defaultValue
+	}
+	// Try to convert the value to an int. If this fails, add an error message to the
+	// validator instance and return the default value.
+	found := false
+	for _, m := range []string{downloadMode, viewMode} {
+		if m == s {
+			found = true
+		}
+	}
+	if !found {
+		return defaultValue
+	}
+	return s
+}

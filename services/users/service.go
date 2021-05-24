@@ -94,6 +94,7 @@ func (us *UsersService) ActivateUser(ctx context.Context, token string) (store.U
 }
 
 func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password string) (string, error) {
+
 	user, err := us.Store.Users.GetForEmail(email)
 	if err != nil {
 		switch {

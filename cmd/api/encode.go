@@ -13,7 +13,6 @@ import (
 type env map[string]interface{}
 
 func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status int, data env, headers http.Header) {
-
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = status
 	trace.Err = nil
@@ -31,14 +30,13 @@ func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status 
 // type for the message parameter, rather than just a string type, as this gives callers
 // more flexibility over the values that we can include in the response.
 func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, resp errResponse) {
-
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = resp.status
 	trace.Message = resp.message
 	trace.Err = resp.err
 
-	// Write the response using the sendJSON() helper. If this happens to return an
-	// error then log it, and fall back to sending the ipLimiter an empty response with a
+	// Write the response using the writeJSON() helper. If this happens to return an
+	// error then log it, and fall back to sending an empty response with a
 	// 500 Internal Server Error status code.
 	err := writeJSON(w, resp.status, env{
 		"status_code": resp.status,
@@ -57,7 +55,7 @@ type errResponse struct {
 	err     error
 }
 
-// Define a sendJSON() helper for sending responses. This takes the destination
+// Define a writeJSON() helper for writing responses. This takes the destination
 // http.ResponseWriter, the HTTP status code to send, the data to encode to JSON, and a
 // header map containing any additional HTTP headers we want to include in the response.
 func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header) error {
@@ -87,7 +85,6 @@ func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header)
 }
 
 func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, reader io.Reader, headers http.Header) {
-
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = http.StatusOK
 	trace.Err = nil
@@ -116,16 +113,16 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		var netErr *net.OpError
 		switch {
 		case errors.As(err, &netErr):
-			// This is a network/client issue. We cannot do nothing here so simply
+			// This is a network/client issue. We cannot do nothing here, so we simply
 			// log the error. This is not an HTTP error, but still report it with
 			// the status 500.
-			logger.Errorw("network/client issue streaming file", "err", err)
+			logger.Errorw("network/client issue streaming bytes", "err", err)
 		default:
-			// The error is originated internally and in this case the error is returned
-			// from the readCloser which will be the appropriate one. Here the status code
-			// on the response is already set and we cannot modify it, but we cann report
+			// The error is originated internally and in this case the error is returned from
+			// the read-closer. The error will be the appropriate one. Here the status code
+			// on the response was already set and we cannot modify it, but we can report
 			// this internally.
-			logger.Errorw("internal error streaming file", "err", err)
+			logger.Errorw("internal error streaming bytes", "err", err)
 		}
 
 		trace.HttpStatus = http.StatusInternalServerError

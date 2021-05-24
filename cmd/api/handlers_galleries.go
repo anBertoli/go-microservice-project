@@ -30,7 +30,7 @@ func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	app.sendJSON(w, r, http.StatusOK, env{"public_galleries": galleries, "filter": metadata}, nil)
+	app.sendJSON(w, r, http.StatusOK, env{"galleries": galleries, "filter": metadata}, nil)
 }
 
 func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Request) {

@@ -26,7 +26,7 @@ func (app *application) listPublicImagesHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	app.sendJSON(w, r, http.StatusOK, env{"public_images": images, "filter": metadata}, nil)
+	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
 func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +57,7 @@ func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) downloadPublicImageHandler(w http.ResponseWriter, r *http.Request) {
+	imageMode := readImageMode(r.URL.Query(), "mode", viewMode)
 	imageID, err := readIDParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
@@ -69,12 +70,15 @@ func (app *application) downloadPublicImageHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	app.streamBytes(w, r, readCloser, http.Header{
-		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
-	})
+	headers := http.Header{}
+	if imageMode == downloadMode {
+		headers["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)}
+	}
+	app.streamBytes(w, r, readCloser, headers)
 }
 
 func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Request) {
+	imageMode := readImageMode(r.URL.Query(), "mode", viewMode)
 	imageID, err := readIDParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
@@ -87,9 +91,11 @@ func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	app.streamBytes(w, r, readCloser, http.Header{
-		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
-	})
+	headers := http.Header{}
+	if imageMode == downloadMode {
+		headers["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)}
+	}
+	app.streamBytes(w, r, readCloser, headers)
 }
 
 const maxBodyBytes = 1024 * 1024 * 50

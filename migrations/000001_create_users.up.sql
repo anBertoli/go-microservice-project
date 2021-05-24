@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS auth_keys_permissions (
 
 INSERT INTO permissions (code) VALUES
     ('*:*'),
+    ('admin'),
 
     ('keys:list'),
     ('keys:create'),
@@ -59,14 +60,12 @@ INSERT INTO permissions (code) VALUES
     ('keys:delete'),
     ('users:stats'),
 
-    ('galleries:public_list'),
     ('galleries:list'),
     ('galleries:create'),
     ('galleries:update'),
     ('galleries:delete'),
     ('galleries:download'),
 
-    ('images:public_list'),
     ('images:list'),
     ('images:create'),
     ('images:update'),
