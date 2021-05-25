@@ -23,7 +23,7 @@ func (is *ImagesService) ListAllPublic(ctx context.Context, filter filters.Input
 	return images, metadata, nil
 }
 
-func (is *ImagesService) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+func (is *ImagesService) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	authData := store.ContextGetAuth(ctx)
 
 	gallery, err := is.Store.Galleries.Get(galleryID)
@@ -36,8 +36,14 @@ func (is *ImagesService) ListForGallery(ctx context.Context, galleryID int64, fi
 		}
 	}
 
-	if authData.User.ID != gallery.UserID {
-		return nil, filters.Meta{}, store.ErrForbidden
+	if public {
+		if !gallery.Published {
+			return nil, filters.Meta{}, store.ErrForbidden
+		}
+	} else {
+		if authData.User.ID != gallery.UserID {
+			return nil, filters.Meta{}, store.ErrForbidden
+		}
 	}
 
 	images, metadata, err := is.Store.Images.GetAllForGallery(galleryID, filter)

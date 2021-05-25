@@ -16,12 +16,14 @@ func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Inpu
 	return am.Next.ListAllPublic(ctx, filter)
 }
 
-func (am *AuthMiddleware) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListImages)
-	if err != nil {
-		return nil, filters.Meta{}, err
+func (am *AuthMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+	if !public {
+		_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListImages)
+		if err != nil {
+			return nil, filters.Meta{}, err
+		}
 	}
-	return am.Next.ListForGallery(ctx, galleryID, filter)
+	return am.Next.ListForGallery(ctx, public, galleryID, filter)
 }
 
 func (am *AuthMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {

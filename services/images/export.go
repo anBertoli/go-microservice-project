@@ -11,7 +11,7 @@ import (
 
 type Service interface {
 	ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error)
-	ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error)
+	ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error)
 	Get(ctx context.Context, public bool, imageID int64) (store.Image, error)
 	Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error)
 	Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error)

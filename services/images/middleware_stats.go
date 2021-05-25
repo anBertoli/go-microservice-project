@@ -22,8 +22,8 @@ func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Inp
 	return sm.Next.ListAllPublic(ctx, filter)
 }
 
-func (sm *StatsMiddleware) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	return sm.Next.ListForGallery(ctx, galleryID, filter)
+func (sm *StatsMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+	return sm.Next.ListForGallery(ctx, public, galleryID, filter)
 }
 
 func (sm *StatsMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {

@@ -29,7 +29,7 @@ func (app *application) listPublicImagesHandler(w http.ResponseWriter, r *http.R
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
-func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) listGalleryImagesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
 		Page:                 readInt(queryString, "page", 1),
@@ -47,7 +47,34 @@ func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	images, metadata, err := app.images.ListForGallery(r.Context(), galleryID, filter)
+	images, metadata, err := app.images.ListForGallery(r.Context(), false, galleryID, filter)
+	if err != nil {
+		app.encodeError(w, r, err)
+		return
+	}
+
+	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
+}
+
+func (app *application) listPublicGalleryImagesHandler(w http.ResponseWriter, r *http.Request) {
+	queryString := r.URL.Query()
+	filter := filters.Input{
+		Page:                 readInt(queryString, "page", 1),
+		PageSize:             readInt(queryString, "page_size", 20),
+		SortCol:              readString(queryString, "sort", "id"),
+		SortSafeList:         []string{"id", "title", "created_at", "-id", "-title", "-created_at"},
+		Search:               readString(queryString, "search", ""),
+		SearchCol:            readString(queryString, "search_field", "title"),
+		SearchColumnSafeList: []string{"title", "caption"},
+	}
+
+	galleryID, err := readIDParam(r, "gallery-id")
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	images, metadata, err := app.images.ListForGallery(r.Context(), true, galleryID, filter)
 	if err != nil {
 		app.encodeError(w, r, err)
 		return

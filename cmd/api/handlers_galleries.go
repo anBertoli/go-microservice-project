@@ -60,7 +60,7 @@ func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Requ
 
 func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.Request) {
 	galleryMode := readImageMode(r.URL.Query(), "mode", dataMode)
-	galleryID, err := readIDParam(r, "id")
+	galleryID, err := readIDParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return

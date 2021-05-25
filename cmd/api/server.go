@@ -53,14 +53,15 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodPut).Path("/v1/galleries/{id}").HandlerFunc(app.updateGalleryHandler)
 	router.Methods(http.MethodDelete).Path("/v1/galleries/{id}").HandlerFunc(app.deleteGalleryHandler)
 
-	router.Methods(http.MethodGet).Path("/v1/galleries/{gallery-id}/images").HandlerFunc(app.listImagesHandler)
+	router.Methods(http.MethodGet).Path("/v1/galleries/{gallery-id}/images").HandlerFunc(app.listGalleryImagesHandler)
 	router.Methods(http.MethodGet).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.getImageHandler)
 	router.Methods(http.MethodPost).Path("/v1/galleries/{gallery-id}/images").HandlerFunc(app.createImageHandler)
 	router.Methods(http.MethodPut).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.editImageHandler)
 	router.Methods(http.MethodDelete).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.deleteImageHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/public/galleries").HandlerFunc(app.listPublicGalleriesHandler)
-	router.Methods(http.MethodGet).Path("/v1/public/galleries/{id}").HandlerFunc(app.getPublicGalleryHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/galleries/{gallery-id}").HandlerFunc(app.getPublicGalleryHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/galleries/{gallery-id}/images").HandlerFunc(app.listPublicGalleryImagesHandler)
 	router.Methods(http.MethodGet).Path("/v1/public/images").HandlerFunc(app.listPublicImagesHandler)
 	router.Methods(http.MethodGet).Path("/v1/public/images/{image-id}").HandlerFunc(app.getPublicImageHandler)
 

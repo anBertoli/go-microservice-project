@@ -24,14 +24,14 @@ func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filter
 	return vm.Next.ListAllPublic(ctx, filter)
 }
 
-func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	err := filter.Validate()
 	if err != nil {
 		v := validator.New()
 		v.AddError("pagination", err.Error())
 		return nil, filters.Meta{}, v
 	}
-	return vm.Next.ListForGallery(ctx, galleryID, filter)
+	return vm.Next.ListForGallery(ctx, public, galleryID, filter)
 }
 
 func (vm *ValidationMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
