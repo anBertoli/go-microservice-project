@@ -100,12 +100,14 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 	case downloadMode:
-		_, readCloser, err := app.images.Download(r.Context(), true, imageID)
+		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
 		if err != nil {
 			app.encodeError(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{})
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Type": []string{image.ContentType},
+		})
 	case attachmentMode:
 		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
 		if err != nil {
@@ -114,6 +116,7 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
+			"Content-Type":        []string{image.ContentType},
 		})
 	}
 }
@@ -135,12 +138,14 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 	case downloadMode:
-		_, readCloser, err := app.images.Download(r.Context(), false, imageID)
+		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
 		if err != nil {
 			app.encodeError(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{})
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Type": []string{image.ContentType},
+		})
 	case attachmentMode:
 		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
 		if err != nil {
@@ -149,6 +154,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
+			"Content-Type":        []string{image.ContentType},
 		})
 	}
 }
@@ -163,14 +169,12 @@ func (app *application) createImageHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	title := r.URL.Query().Get("title")
-	contentType := r.Header.Get("Content-Type")
 
 	reader := http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
 	image, err := app.images.Insert(r.Context(), reader, store.Image{
-		GalleryID:   galleryID,
-		Title:       title,
-		ContentType: contentType,
+		GalleryID: galleryID,
+		Title:     title,
 	})
 	if err != nil {
 		app.encodeError(w, r, err)

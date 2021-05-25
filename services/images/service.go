@@ -123,11 +123,12 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	}
 
 	image, err = is.Store.Images.Insert(reader, store.Image{
-		GalleryID:   image.GalleryID,
 		Title:       image.Title,
 		Caption:     image.Caption,
 		UserID:      authData.User.ID,
 		ContentType: image.ContentType,
+		GalleryID:   image.GalleryID,
+		Published:   gallery.Published,
 	})
 	if err != nil {
 		switch {
