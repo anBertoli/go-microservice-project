@@ -17,16 +17,17 @@ import (
 )
 
 type Image struct {
-	ID        int64     `json:"id" db:"id"`
-	Path      string    `json:"-" db:"filepath"`
-	Title     string    `json:"title" db:"title"`
-	Caption   string    `json:"caption" db:"caption"`
-	Size      int64     `json:"size" db:"size"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	GalleryID int64     `json:"gallery_id" db:"gallery_id"`
-	Published bool      `json:"published" db:"published"`
-	UserID    int64     `json:"user_id" db:"user_id"`
+	ID          int64     `json:"id" db:"id"`
+	Path        string    `json:"-" db:"filepath"`
+	Title       string    `json:"title" db:"title"`
+	Caption     string    `json:"caption" db:"caption"`
+	Size        int64     `json:"size" db:"size"`
+	ContentType string    `json:"content_type" db:"content_type"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	GalleryID   int64     `json:"gallery_id" db:"gallery_id"`
+	Published   bool      `json:"published" db:"published"`
+	UserID      int64     `json:"user_id" db:"user_id"`
 }
 
 type ImagesStore struct {
@@ -52,7 +53,7 @@ func (is *ImagesStore) Get(imageID int64) (Image, error) {
 
 	err := is.db.GetContext(ctx, &image, `
 		SELECT 
-			images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
+			images.id, images.filepath, images.title, images.size, images.caption, images.content_type, images.created_at, 
   			images.updated_at, images.gallery_id, users.id as user_id, galleries.published
 		FROM images 
 			LEFT JOIN galleries on images.gallery_id = galleries.id
@@ -76,7 +77,7 @@ func (is *ImagesStore) GetReader(imageID int64) (io.ReadCloser, error) {
 
 	err := is.db.GetContext(ctx, &image, `
 		SELECT 
-			images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
+			images.id, images.filepath, images.title, images.size, images.content_type, images.caption, images.created_at, 
   			images.updated_at, images.gallery_id, galleries.user_id as user_id
 		FROM images 
 		LEFT JOIN galleries on images.gallery_id = galleries.id
@@ -105,7 +106,7 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 	var (
 		images   = []Image{}
 		metadata filters.Meta
-		dbi      []struct {
+		tmp      []struct {
 			Count int64 `db:"count"`
 			Image
 		}
@@ -117,9 +118,9 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := is.db.SelectContext(ctx, &dbi, fmt.Sprintf(`
+	err := is.db.SelectContext(ctx, &tmp, fmt.Sprintf(`
 		SELECT count(*) OVER(), 
-			images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
+			images.id, images.filepath, images.title, images.size, images.content_type, images.caption, images.created_at, 
 			images.updated_at, images.gallery_id, galleries.user_id as user_id, galleries.published
 		FROM images 
 		LEFT JOIN galleries on images.gallery_id = galleries.id
@@ -135,11 +136,11 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 		return nil, metadata, err
 	}
 
-	for _, i := range dbi {
+	for _, i := range tmp {
 		images = append(images, i.Image)
 	}
-	if len(dbi) > 0 {
-		metadata = filter.CalculateOutput(dbi[0].Count)
+	if len(tmp) > 0 {
+		metadata = filter.CalculateOutput(tmp[0].Count)
 	} else {
 		metadata = filter.CalculateOutput(0)
 	}
@@ -151,7 +152,7 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 	var (
 		images = []Image{}
 		meta   filters.Meta
-		dbi    []struct {
+		tmp    []struct {
 			Count int64 `db:"count"`
 			Image
 		}
@@ -163,9 +164,9 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := is.db.SelectContext(ctx, &dbi, fmt.Sprintf(`
+	err := is.db.SelectContext(ctx, &tmp, fmt.Sprintf(`
 		SELECT count(*) OVER(), 
-                images.id, images.filepath, images.title, images.size, images.caption, images.created_at, 
+                images.id, images.filepath, images.title, images.size, images.content_type, images.caption, images.created_at, 
 				images.updated_at, images.gallery_id, users.id as user_id, galleries.published
 		FROM images 
 			LEFT JOIN galleries on images.gallery_id = galleries.id
@@ -182,12 +183,12 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 		return nil, meta, err
 	}
 
-	for _, i := range dbi {
+	for _, i := range tmp {
 		images = append(images, i.Image)
 	}
 
-	if len(dbi) > 0 {
-		meta = filter.CalculateOutput(dbi[0].Count)
+	if len(tmp) > 0 {
+		meta = filter.CalculateOutput(tmp[0].Count)
 	} else {
 		meta = filter.CalculateOutput(0)
 	}
@@ -218,10 +219,10 @@ func (is *ImagesStore) Insert(r io.Reader, image Image) (Image, error) {
 	now := time.Now().UTC()
 	err = is.db.GetContext(ctx, &image, `
 		INSERT
-			INTO images (filepath, title, caption, created_at, updated_at, size, gallery_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) 
+			INTO images (filepath, title, caption, created_at, updated_at, size, content_type, gallery_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 			RETURNING id, created_at, updated_at
-	`, image.Path, image.Title, image.Caption, now, now, n, image.GalleryID)
+	`, image.Path, image.Title, image.Caption, now, now, n, image.ContentType, image.GalleryID)
 	if err != nil {
 		return Image{}, err
 	}

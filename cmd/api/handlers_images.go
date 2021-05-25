@@ -47,7 +47,7 @@ func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	images, metadata, err := app.images.ListAllOwned(r.Context(), galleryID, filter)
+	images, metadata, err := app.images.ListForGallery(r.Context(), galleryID, filter)
 	if err != nil {
 		app.encodeError(w, r, err)
 		return
@@ -56,46 +56,74 @@ func (app *application) listImagesHandler(w http.ResponseWriter, r *http.Request
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
-func (app *application) downloadPublicImageHandler(w http.ResponseWriter, r *http.Request) {
-	imageMode := readImageMode(r.URL.Query(), "mode", viewMode)
+func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Request) {
+	imageMode := readImageMode(r.URL.Query(), "mode", dataMode)
 	imageID, err := readIDParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
-	image, readCloser, err := app.images.DownloadPublic(r.Context(), imageID)
-	if err != nil {
-		app.encodeError(w, r, err)
-		return
+	switch imageMode {
+	case dataMode:
+		image, err := app.images.Get(r.Context(), true, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
+	case downloadMode:
+		_, readCloser, err := app.images.Download(r.Context(), true, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{})
+	case attachmentMode:
+		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
+		})
 	}
-
-	headers := http.Header{}
-	if imageMode == downloadMode {
-		headers["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)}
-	}
-	app.streamBytes(w, r, readCloser, headers)
 }
 
-func (app *application) downloadImageHandler(w http.ResponseWriter, r *http.Request) {
-	imageMode := readImageMode(r.URL.Query(), "mode", viewMode)
+func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) {
+	imageMode := readImageMode(r.URL.Query(), "mode", dataMode)
 	imageID, err := readIDParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
-	image, readCloser, err := app.images.Download(r.Context(), imageID)
-	if err != nil {
-		app.encodeError(w, r, err)
-		return
+	switch imageMode {
+	case dataMode:
+		image, err := app.images.Get(r.Context(), false, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
+	case downloadMode:
+		_, readCloser, err := app.images.Download(r.Context(), false, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{})
+	case attachmentMode:
+		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
+		})
 	}
-
-	headers := http.Header{}
-	if imageMode == downloadMode {
-		headers["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)}
-	}
-	app.streamBytes(w, r, readCloser, headers)
 }
 
 const maxBodyBytes = 1024 * 1024 * 50
@@ -106,13 +134,16 @@ func (app *application) createImageHandler(w http.ResponseWriter, r *http.Reques
 		app.notFoundResponse(w, r)
 		return
 	}
+
 	title := r.URL.Query().Get("title")
+	contentType := r.Header.Get("Content-Type")
 
 	reader := http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
 	image, err := app.images.Insert(r.Context(), reader, store.Image{
-		GalleryID: galleryID,
-		Title:     title,
+		GalleryID:   galleryID,
+		Title:       title,
+		ContentType: contentType,
 	})
 	if err != nil {
 		app.encodeError(w, r, err)

@@ -54,7 +54,7 @@ func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters
 	var (
 		galleries = []Gallery{}
 		pagMeta   filters.Meta
-		dbg       []struct {
+		tmp       []struct {
 			Gallery
 			Count int64 `db:"count"`
 		}
@@ -66,7 +66,7 @@ func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := gs.db.SelectContext(ctx, &dbg, fmt.Sprintf(`
+	err := gs.db.SelectContext(ctx, &tmp, fmt.Sprintf(`
 		SELECT count(*) OVER(), * FROM galleries
 		WHERE ((LOWER(%s) LIKE LOWER('%%%s%%')) OR ($1 = '')) AND published = true
 		ORDER BY %s %s, id ASC
@@ -80,11 +80,11 @@ func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters
 		return nil, pagMeta, err
 	}
 
-	for _, g := range dbg {
+	for _, g := range tmp {
 		galleries = append(galleries, g.Gallery)
 	}
-	if len(dbg) > 0 {
-		pagMeta = filter.CalculateOutput(dbg[0].Count)
+	if len(tmp) > 0 {
+		pagMeta = filter.CalculateOutput(tmp[0].Count)
 	} else {
 		pagMeta = filter.CalculateOutput(0)
 	}

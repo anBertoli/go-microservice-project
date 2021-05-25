@@ -106,7 +106,7 @@ func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.ErrEditConflict
+			// edit conflict, but still ok in this case
 		default:
 			return err
 		}
@@ -115,7 +115,28 @@ func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
 	return nil
 }
 
-func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+func (gs *GalleriesService) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
+	authData := store.ContextGetAuth(ctx)
+
+	gallery, err := gs.store.Galleries.Get(galleryID)
+	if err != nil {
+		return store.Gallery{}, err
+	}
+
+	if public {
+		if !gallery.Published {
+			return store.Gallery{}, store.ErrForbidden
+		}
+	} else {
+		if authData.User.ID != gallery.UserID {
+			return store.Gallery{}, store.ErrForbidden
+		}
+	}
+
+	return gallery, nil
+}
+
+func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	authData := store.ContextGetAuth(ctx)
 
 	// Fetch the gallery and make sure the authenticated user is the owner of the gallery.
@@ -123,8 +144,15 @@ func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (stor
 	if err != nil {
 		return store.Gallery{}, nil, err
 	}
-	if authData.User.ID != gallery.UserID {
-		return store.Gallery{}, nil, store.ErrForbidden
+
+	if public {
+		if !gallery.Published {
+			return store.Gallery{}, nil, store.ErrForbidden
+		}
+	} else {
+		if authData.User.ID != gallery.UserID {
+			return store.Gallery{}, nil, store.ErrForbidden
+		}
 	}
 
 	// Try to acquire a token in the semaphore and continue in case of success. If the operation
@@ -140,54 +168,6 @@ func (gs *GalleriesService) Download(ctx context.Context, galleryID int64) (stor
 	// It's vital to release the token of the semaphore in any case to release acquired resources.
 	// The io.Pipe is necessary to connect the streaming function (which needs a writer) to
 	// the caller which expects a reader.
-	logger := tracing.LoggerWithRequestID(ctx, gs.logger)
-	r, w := io.Pipe()
-
-	go func() {
-		defer func() {
-			_ = w.Close()
-			<-gs.sema
-		}()
-
-		err := gs.streamGallery(ctx, w, galleryID)
-		if err != nil {
-			switch {
-			case errors.Is(err, io.ErrClosedPipe):
-				// This error is originated from the consumer side and we cannot do anything
-				// about that, simply drop the job and don't return any error.
-			default:
-				// Real error coming from the internal streaming function. Log the error and
-				// store the job into the pipe, in order to inform the caller about the error.
-				logger.Errorw("streaming gallery archive", "err", err)
-				_ = w.CloseWithError(err)
-			}
-		}
-	}()
-
-	return gallery, r, nil
-}
-
-func (gs *GalleriesService) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-
-	// Fetch the gallery and make sure it is public.
-	gallery, err := gs.store.Galleries.Get(galleryID)
-	if err != nil {
-		return store.Gallery{}, nil, err
-	}
-	if !gallery.Published {
-		return store.Gallery{}, nil, store.ErrForbidden
-	}
-
-	// Try to acquire a token in the semaphore and continue in case of success. See at the
-	// download function above for more details.
-	select {
-	case gs.sema <- struct{}{}:
-	default:
-		return store.Gallery{}, nil, ErrBusy
-	}
-
-	// Start a goroutine in charge of streaming the compressed tar archive to the provided writer,
-	// in the same way as explained in the download function above.
 	logger := tracing.LoggerWithRequestID(ctx, gs.logger)
 	r, w := io.Pipe()
 

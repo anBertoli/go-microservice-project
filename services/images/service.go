@@ -23,7 +23,7 @@ func (is *ImagesService) ListAllPublic(ctx context.Context, filter filters.Input
 	return images, metadata, nil
 }
 
-func (is *ImagesService) ListAllOwned(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+func (is *ImagesService) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	authData := store.ContextGetAuth(ctx)
 
 	gallery, err := is.Store.Galleries.Get(galleryID)
@@ -48,39 +48,42 @@ func (is *ImagesService) ListAllOwned(ctx context.Context, galleryID int64, filt
 	return images, metadata, nil
 }
 
-func (is *ImagesService) Download(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+func (is *ImagesService) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 
 	image, err := is.Store.Images.Get(imageID)
 	if err != nil {
-		return store.Image{}, nil, err
+		return store.Image{}, err
 	}
 
-	if authData.User.ID != image.UserID {
-		return store.Image{}, nil, store.ErrForbidden
-	}
-
-	readCloser, err := is.Store.Images.GetReader(imageID)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, nil, store.ErrEditConflict
-		default:
-			return store.Image{}, nil, err
+	if public {
+		if !image.Published {
+			return store.Image{}, store.ErrForbidden
+		}
+	} else {
+		if authData.User.ID != image.UserID {
+			return store.Image{}, store.ErrForbidden
 		}
 	}
 
-	return image, readCloser, nil
+	return image, nil
 }
 
-func (is *ImagesService) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
+func (is *ImagesService) Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error) {
 	image, err := is.Store.Images.Get(imageID)
 	if err != nil {
 		return store.Image{}, nil, err
 	}
 
-	if !image.Published {
-		return store.Image{}, nil, store.ErrForbidden
+	if public {
+		if !image.Published {
+			return store.Image{}, nil, store.ErrForbidden
+		}
+	} else {
+		authData := store.ContextGetAuth(ctx)
+		if authData.User.ID != image.UserID {
+			return store.Image{}, nil, store.ErrForbidden
+		}
 	}
 
 	readCloser, err := is.Store.Images.GetReader(imageID)
@@ -114,10 +117,11 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	}
 
 	image, err = is.Store.Images.Insert(reader, store.Image{
-		GalleryID: image.GalleryID,
-		Title:     image.Title,
-		Caption:   image.Caption,
-		UserID:    authData.User.ID,
+		GalleryID:   image.GalleryID,
+		Title:       image.Title,
+		Caption:     image.Caption,
+		UserID:      authData.User.ID,
+		ContentType: image.ContentType,
 	})
 	if err != nil {
 		switch {

@@ -1,4 +1,5 @@
 BEGIN;
+
 CREATE TABLE IF NOT EXISTS stats (
     n_galleries INTEGER NOT NULL,
     n_images    INTEGER NOT NULL,
@@ -9,4 +10,5 @@ CREATE TABLE IF NOT EXISTS stats (
 
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
 COMMIT;

@@ -79,20 +79,18 @@ func (p Input) CalculateOutput(totalRecords int64) Meta {
 		searchField = p.SearchCol
 	}
 
-	if totalRecords == 0 {
-		return Meta{
-			Search:      p.Search,
-			SearchField: searchField,
-		}
-	}
-
-	return Meta{
-		CurrentPage:  p.Page,
-		PageSize:     p.PageSize,
-		FirstPage:    1,
-		LastPage:     int(math.Ceil(float64(totalRecords) / float64(p.PageSize))),
-		TotalRecords: totalRecords,
+	meta := Meta{
 		Search:       p.Search,
 		SearchField:  searchField,
+		PageSize:     p.PageSize,
+		CurrentPage:  p.Page,
+		FirstPage:    1,
+		LastPage:     1,
+		TotalRecords: totalRecords,
 	}
+	if totalRecords != 0 {
+		meta.LastPage = int(math.Ceil(float64(totalRecords) / float64(p.PageSize)))
+	}
+
+	return meta
 }

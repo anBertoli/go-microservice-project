@@ -48,21 +48,21 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/galleries").HandlerFunc(app.listGalleriesHandler)
-	router.Methods(http.MethodGet).Path("/v1/galleries/{id}").HandlerFunc(app.downloadGalleryHandler)
+	router.Methods(http.MethodGet).Path("/v1/galleries/{id}").HandlerFunc(app.getGalleryHandler)
 	router.Methods(http.MethodPost).Path("/v1/galleries").HandlerFunc(app.createGalleriesHandler)
 	router.Methods(http.MethodPut).Path("/v1/galleries/{id}").HandlerFunc(app.updateGalleryHandler)
 	router.Methods(http.MethodDelete).Path("/v1/galleries/{id}").HandlerFunc(app.deleteGalleryHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/galleries/{gallery-id}/images").HandlerFunc(app.listImagesHandler)
-	router.Methods(http.MethodGet).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.downloadImageHandler)
+	router.Methods(http.MethodGet).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.getImageHandler)
 	router.Methods(http.MethodPost).Path("/v1/galleries/{gallery-id}/images").HandlerFunc(app.createImageHandler)
 	router.Methods(http.MethodPut).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.editImageHandler)
 	router.Methods(http.MethodDelete).Path("/v1/galleries/images/{image-id}").HandlerFunc(app.deleteImageHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/public/galleries").HandlerFunc(app.listPublicGalleriesHandler)
-	router.Methods(http.MethodGet).Path("/v1/public/galleries/{id}").HandlerFunc(app.downloadPublicGalleryHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/galleries/{id}").HandlerFunc(app.getPublicGalleryHandler)
 	router.Methods(http.MethodGet).Path("/v1/public/images").HandlerFunc(app.listPublicImagesHandler)
-	router.Methods(http.MethodGet).Path("/v1/public/images/{image-id}").HandlerFunc(app.downloadPublicImageHandler)
+	router.Methods(http.MethodGet).Path("/v1/public/images/{image-id}").HandlerFunc(app.getPublicImageHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/healthcheck").HandlerFunc(app.healthcheckHandler)
 	router.Methods(http.MethodGet).Path("/v1/permissions").HandlerFunc(app.listPermissionsHandler)

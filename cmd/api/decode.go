@@ -140,8 +140,9 @@ func readInt(qs url.Values, key string, defaultValue int) int {
 }
 
 const (
-	downloadMode = "download"
-	viewMode     = "view"
+	dataMode       = "data"
+	attachmentMode = "download"
+	downloadMode   = "view"
 )
 
 func readImageMode(qs url.Values, key string, defaultValue string) string {
@@ -154,7 +155,7 @@ func readImageMode(qs url.Values, key string, defaultValue string) string {
 	// Try to convert the value to an int. If this fails, add an error message to the
 	// validator instance and return the default value.
 	found := false
-	for _, m := range []string{downloadMode, viewMode} {
+	for _, m := range []string{attachmentMode, downloadMode, dataMode} {
 		if m == s {
 			found = true
 		}

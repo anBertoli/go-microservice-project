@@ -25,16 +25,24 @@ func (am *AuthMiddleware) ListAllOwned(ctx context.Context, filter filters.Input
 	return am.Next.ListAllOwned(ctx, filter)
 }
 
-func (am *AuthMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return am.Next.DownloadPublic(ctx, galleryID)
+func (am *AuthMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
+	if !public {
+		_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListGalleries)
+		if err != nil {
+			return store.Gallery{}, err
+		}
+	}
+	return am.Next.Get(ctx, public, galleryID)
 }
 
-func (am *AuthMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDownloadGallery)
-	if err != nil {
-		return store.Gallery{}, nil, err
+func (am *AuthMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	if !public {
+		_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDownloadGallery)
+		if err != nil {
+			return store.Gallery{}, nil, err
+		}
 	}
-	return am.Next.Download(ctx, galleryID)
+	return am.Next.Download(ctx, public, galleryID)
 }
 
 func (am *AuthMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {

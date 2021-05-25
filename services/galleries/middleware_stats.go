@@ -21,6 +21,14 @@ func (sm *StatsMiddleware) ListAllOwned(ctx context.Context, filter filters.Inpu
 	return sm.Next.ListAllOwned(ctx, filter)
 }
 
+func (sm *StatsMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
+	return sm.Next.Get(ctx, public, galleryID)
+}
+
+func (sm *StatsMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	return sm.Next.Download(ctx, public, galleryID)
+}
+
 func (sm *StatsMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
 	gallery, err := sm.Next.Insert(ctx, gallery)
 	if err != nil {
@@ -46,12 +54,4 @@ func (sm *StatsMiddleware) Delete(ctx context.Context, galleryID int64) error {
 		return err
 	}
 	return sm.Store.IncrementGalleries(authData.User.ID, -1)
-}
-
-func (sm *StatsMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return sm.Next.Download(ctx, galleryID)
-}
-
-func (sm *StatsMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return sm.Next.DownloadPublic(ctx, galleryID)
 }

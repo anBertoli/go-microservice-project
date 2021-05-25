@@ -58,40 +58,74 @@ func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Requ
 	app.sendJSON(w, r, http.StatusOK, env{"galleries": galleries, "filter": metadata}, nil)
 }
 
-func (app *application) downloadPublicGalleryHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.Request) {
+	galleryMode := readImageMode(r.URL.Query(), "mode", dataMode)
 	galleryID, err := readIDParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
-	gallery, readCloser, err := app.galleries.DownloadPublic(r.Context(), galleryID)
-	if err != nil {
-		app.encodeError(w, r, err)
-		return
+	switch galleryMode {
+	case downloadMode:
+		_, readCloser, err := app.galleries.Download(r.Context(), true, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, nil)
+	case attachmentMode:
+		gallery, readCloser, err := app.galleries.Download(r.Context(), true, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
+		})
+	case dataMode:
+		gallery, err := app.galleries.Get(r.Context(), true, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 	}
-
-	app.streamBytes(w, r, readCloser, http.Header{
-		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
-	})
 }
 
-func (app *application) downloadGalleryHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getGalleryHandler(w http.ResponseWriter, r *http.Request) {
+	galleryMode := readImageMode(r.URL.Query(), "mode", dataMode)
 	galleryID, err := readIDParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
-	gallery, readCloser, err := app.galleries.Download(r.Context(), galleryID)
-	if err != nil {
-		app.encodeError(w, r, err)
-		return
+	switch galleryMode {
+	case downloadMode:
+		_, readCloser, err := app.galleries.Download(r.Context(), false, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, nil)
+	case attachmentMode:
+		gallery, readCloser, err := app.galleries.Download(r.Context(), false, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.streamBytes(w, r, readCloser, http.Header{
+			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
+		})
+	case dataMode:
+		gallery, err := app.galleries.Get(r.Context(), false, galleryID)
+		if err != nil {
+			app.encodeError(w, r, err)
+			return
+		}
+		app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 	}
-
-	app.streamBytes(w, r, readCloser, http.Header{
-		"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
-	})
 }
 
 func (app *application) createGalleriesHandler(w http.ResponseWriter, r *http.Request) {

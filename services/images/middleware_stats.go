@@ -22,16 +22,16 @@ func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Inp
 	return sm.Next.ListAllPublic(ctx, filter)
 }
 
-func (sm *StatsMiddleware) ListAllOwned(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	return sm.Next.ListAllOwned(ctx, galleryID, filter)
+func (sm *StatsMiddleware) ListForGallery(ctx context.Context, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
+	return sm.Next.ListForGallery(ctx, galleryID, filter)
 }
 
-func (sm *StatsMiddleware) DownloadPublic(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
-	return sm.Next.DownloadPublic(ctx, imageID)
+func (sm *StatsMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
+	return sm.Next.Get(ctx, public, imageID)
 }
 
-func (sm *StatsMiddleware) Download(ctx context.Context, imageID int64) (store.Image, io.ReadCloser, error) {
-	return sm.Next.Download(ctx, imageID)
+func (sm *StatsMiddleware) Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error) {
+	return sm.Next.Download(ctx, public, imageID)
 }
 
 func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {

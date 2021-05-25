@@ -16,7 +16,6 @@ type UsersService struct {
 }
 
 func (us *UsersService) RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error) {
-
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err

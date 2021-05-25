@@ -33,6 +33,14 @@ func (vm *ValidationMiddleware) ListAllOwned(ctx context.Context, filter filters
 	return vm.Next.ListAllOwned(ctx, filter)
 }
 
+func (vm *ValidationMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
+	return vm.Next.Get(ctx, public, galleryID)
+}
+
+func (vm *ValidationMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
+	return vm.Next.Download(ctx, public, galleryID)
+}
+
 func (vm *ValidationMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
 	v := validator.New()
 	v.Check(gallery.Title != "", "title", "must be provided")
@@ -53,12 +61,4 @@ func (vm *ValidationMiddleware) Update(ctx context.Context, gallery store.Galler
 
 func (vm *ValidationMiddleware) Delete(ctx context.Context, galleryID int64) error {
 	return vm.Next.Delete(ctx, galleryID)
-}
-
-func (vm *ValidationMiddleware) Download(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return vm.Next.Download(ctx, galleryID)
-}
-
-func (vm *ValidationMiddleware) DownloadPublic(ctx context.Context, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return vm.Next.DownloadPublic(ctx, galleryID)
 }

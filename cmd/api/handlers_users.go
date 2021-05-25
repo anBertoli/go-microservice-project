@@ -29,9 +29,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	app.background(func() {
 		mailData := map[string]interface{}{
 			"activationToken": token,
-			"hostName":        "http://127.0.0.1:4000",
-			"userID":          user.ID,
-			"name":            user.Name,
+			// TODO
+			"hostName": "http://127.0.0.1:4000",
+			"userID":   user.ID,
+			"name":     user.Name,
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.gohtml", mailData)
 		if err != nil {
@@ -109,7 +110,11 @@ func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	app.sendJSON(w, r, http.StatusOK, env{"user": authData.User, "keys": authData.Keys, "permissions": authData.Permissions}, nil)
+	app.sendJSON(w, r, http.StatusOK, env{
+		"user":        authData.User,
+		"keys":        authData.Keys,
+		"permissions": authData.Permissions,
+	}, nil)
 }
 
 func (app *application) getUserStatsHandler(w http.ResponseWriter, r *http.Request) {

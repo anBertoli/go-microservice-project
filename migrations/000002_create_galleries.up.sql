@@ -13,14 +13,15 @@ CREATE TABLE IF NOT EXISTS galleries (
 );
 
 CREATE TABLE IF NOT EXISTS images (
-    id         BIGSERIAL NOT NULL PRIMARY KEY,
-    filepath   TEXT      NOT NULL,
-    title      TEXT      NOT NULL,
-    caption    TEXT      NOT NULL,
-    size       BIGINT    NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL,
-    gallery_id INTEGER   NOT NULL,
+    id              BIGSERIAL   NOT NULL PRIMARY KEY,
+    filepath        TEXT        NOT NULL,
+    title           TEXT        NOT NULL,
+    caption         TEXT        NOT NULL,
+    size            BIGINT      NOT NULL,
+    content_type    TEXT        NOT NULL,
+    created_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP   NOT NULL,
+    gallery_id      INTEGER     NOT NULL,
 
     CONSTRAINT image_to_galleries_fk FOREIGN KEY (gallery_id) REFERENCES galleries (id)
 );
