@@ -11,14 +11,13 @@ var (
 )
 
 // Define a config struct to hold all the configuration settings for our application.
-// For now, the only configuration settings will be the network port that we want the
-// server to listen on, and the name of the current operating environment for the
-// application (development, staging, production, etc.). We will read in these
-// configuration settings from command-line flags when the application starts.
+// We will read in these configuration settings from a config file when the
+// application starts.
 type config struct {
-	Port int    `json:"port"`
-	Env  string `json:"env"`
-	Db   struct {
+	Address string `json:"address"`
+	Port    int    `json:"port"`
+	Env     string `json:"env"`
+	Db      struct {
 		Dsn          string `json:"dsn"`
 		MaxOpenConns int    `json:"max_open_conns"`
 		MaxIdleConns int    `json:"max_idle_conns"`
@@ -62,6 +61,8 @@ func parseConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+
+	// This is not from the config file.
 	cfg.DisplayVersion = *version
 
 	return cfg, nil

@@ -15,6 +15,9 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/tracing"
 )
 
+// The authenticate middleware extracts the authentication key from the request
+// 'Authorization" header and tries to authenticate the request. Successful
+// auth data will be put in the request context.
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -23,34 +26,29 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		// header in the request.
 		w.Header().Add("Vary", "Authorization")
 
-		// Retrieve the value of the Authorization header from the request. This will
-		// return the empty string "" if there is no such header found. If there is no
-		// Authorization header found, call the next handler in the chain and return
+		// Retrieve the value of the Authorization header from the request. If there is
+		// no Authorization header found, call the next handler in the chain and return
 		// without executing any of the code below.
 		authorizationHeader := r.Header.Get("Authorization")
-
 		if authorizationHeader == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		// Otherwise, we expect the value of the Authorization header to be in the format
-		// "Bearer <key>". We try to split this into its constituent parts, and if the
-		// header isn't in the expected format we return a 401 Unauthorized response
-		// using the invalidAuthenticationTokenResponse() helper.
+		// "Bearer <key>". If the header isn't in the expected format we return a 401
+		// response (unauthorized).
 		headerParts := strings.Split(authorizationHeader, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
 
-		// Extract the actual authentication (plain) key from the header parts.
 		plainKey := headerParts[1]
 
 		// Retrieve the details of the user associated with the authentication key,
-		// along with the key being used and all related permissions. We will call
-		// calling the invalidAuthenticationTokenResponse() helper if no matching
-		// record was found.
+		// along with the key being used and all the related permissions. If auth
+		// fails we return a 401 response (unauthorized).
 		user, err := app.store.Users.GetForKey(plainKey)
 		if err != nil {
 			switch {
@@ -79,24 +77,23 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		// Call the RequestSetAuth() helper to add the user information to the request
-		// context. This information will flow into the real HTTP handler and in each
-		// internal service that will receive the context.
+		// Add the user information to the request context. This information will flow into
+		// the next HTTP handlers and in each internal service that will receive the context.
 		r = r.WithContext(store.ContextSetAuth(r.Context(), &store.Auth{
 			User:        user,
 			Keys:        keys,
 			Permissions: permissions,
 		}))
 
-		// Call the next handler in the chain.
+		// Proceed with next handler in the chain.
 		next.ServeHTTP(w, r)
 	})
 }
 
-// The logging middleware is used to create a request trace and to log incoming and ending requests.
-// A request trace is created and put into the request context. Before passing the control to the next
-// http handler the incoming request is logged. Another log is made after the requests handling, which
-// uses request trace data that could be enriched by other context users.
+// The logging middleware is used to log incoming requests and related outgoing responses.
+// Before passing the control to the next http handler the incoming request is logged.
+// Another log is emitted for outgoing responses, using the (possibly) enriched
+// request trace.
 func (app *application) logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -120,12 +117,13 @@ func (app *application) logging(next http.Handler) http.Handler {
 			"method", r.Method,
 		)
 
+		// Serve the request.
 		next.ServeHTTP(w, r)
 
 		// After the request handling produce another log. Note that some values could not
-		// be present since is responsibility of other http handlers to enrich the trace,
-		// but it is not mandatory. Logs are produced with different severity based on the
-		// HTTP code.
+		// be present since is the responsibility of other http handlers to enrich the
+		// trace, but this is not mandatory. Logs are produced with different severity
+		// based on the HTTP code of the response.
 		end := time.Now().UTC()
 		fields := []interface{}{
 			"id", requestTrace.ID,
@@ -149,20 +147,23 @@ func (app *application) logging(next http.Handler) http.Handler {
 	})
 }
 
+// The globalRateLimit middleware applies a rate limit control mechanism to the provided
+// http handler. Rate limiting requests is particularly important to avoid server overloads.
+// Different strategies could be used depending on how the app is deployed. Rate-limiting
+// could be performed globally (this middleware) or per-IP (take a look below).
 func (app *application) globalRateLimit(next http.Handler) http.Handler {
 
-	// Initialize a new rate limiter which allows an average of 2 requests
-	// per second, with a maximum of 4 requests in a single ‘burst’
+	// Initialize a new rate limiter which allows an average of 'n' requests
+	// per second, with a maximum of 'm' requests in a single burst. Then
+	// return a closure that can access the limiter variable.
 	limiter := rate.NewLimiter(
 		rate.Limit(app.config.RateLimit.Rps),
 		app.config.RateLimit.Burst,
 	)
 
-	// The function we are returning is a closure, which can access the limiter variable.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Call limiter.Allow() to see if the request is permitted, and if it's not,
-		// then we call the rateLimitExceededResponse() helper to return a 429 Too Many
-		// Requests response.
+		// Call limiter.Allow() to see if the request is permitted, and if
+		// it's not return a 429 Too Many Requests response.
 		if !limiter.Allow() {
 			app.rateLimitExceededResponse(w, r)
 			return
@@ -171,17 +172,12 @@ func (app *application) globalRateLimit(next http.Handler) http.Handler {
 	})
 }
 
-/*
- * Using the per-IP rate-limiting pattern will only makes sens if your API application is
- * running on a single-machine. If your infrastructure is distributed, with your
- * application running on multiple servers behind a load balancer, then you’ll need
- * to use an alternative approach. If you’re using HAProxy or Nginx as a load balancer
- * or reverse proxy, both of these have built-in functionality for rate limiting that
- * it would probably be sensible to use. Alternatively, you could use a fast database
- * like Redis to maintain a request count for clients, running on a server which all
- * your application servers can communicate with.
- */
-
+// Using the per-IP rate-limiting pattern will only makes sens if your API application is directly
+// exposed to clients on a single machine. If your infrastructure is distributed, with your app
+// running on multiple servers behind a load balancer/reverse-proxy, another approach must be
+// used. As an example, HAProxy or Nginx could take care of rate limiting directly. Alternatively,
+// you could use a fast database like Redis to maintain a request count for clients, running on
+// a server which all your application servers can communicate with.
 func (app *application) ipRateLimit(next http.Handler) http.Handler {
 
 	// Define a ipLimiter struct to hold the rate limiter and last seen time for each
@@ -192,20 +188,20 @@ func (app *application) ipRateLimit(next http.Handler) http.Handler {
 	}
 
 	// We keep in memory a map of IPs -> ipLimiters, the map must be accessed with a
-	// mutex to avoid concurrency issues.
+	// mutex to avoid concurrency issues. Additionally, a background goroutine is
+	// started, which removes old entries from the clients map once every minute.
 	var (
 		mu      sync.Mutex
 		clients = make(map[string]*ipLimiter)
 	)
 
-	// Launch a background goroutine which removes old entries from the clients map once
-	// every minute.
 	go func() {
 		for {
 			time.Sleep(time.Minute)
 			// Lock the mutex to prevent any rate limiter checks from happening while
 			// the cleanup is taking place.
 			mu.Lock()
+
 			// Loop through all clients. If they haven't been seen within the last three
 			// minutes, delete the corresponding entry from the map.
 			for ip, client := range clients {
@@ -213,6 +209,7 @@ func (app *application) ipRateLimit(next http.Handler) http.Handler {
 					delete(clients, ip)
 				}
 			}
+
 			// Importantly, unlock the mutex when the cleanup is complete.
 			mu.Unlock()
 		}
@@ -231,10 +228,12 @@ func (app *application) ipRateLimit(next http.Handler) http.Handler {
 		// then set lastSeen time to now().
 		_, found := clients[ip]
 		if !found {
-			clients[ip] = &ipLimiter{limiter: rate.NewLimiter(
-				rate.Limit(app.config.RateLimit.Rps),
-				app.config.RateLimit.Burst,
-			)}
+			clients[ip] = &ipLimiter{
+				limiter: rate.NewLimiter(
+					rate.Limit(app.config.RateLimit.Rps),
+					app.config.RateLimit.Burst,
+				),
+			}
 		}
 		clients[ip].lastSeen = time.Now()
 
@@ -255,21 +254,6 @@ func (app *application) ipRateLimit(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func realIP(r *http.Request) (string, error) {
-	addr := r.Header.Get("X-Real-Ip")
-	if addr == "" {
-		addr = r.Header.Get("X-Forwarded-For")
-		if addr == "" {
-			addr = r.RemoteAddr
-		}
-	}
-	ip, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return "", err
-	}
-	return ip, nil
 }
 
 func (app *application) enableCORS(next http.Handler) http.Handler {
@@ -341,4 +325,19 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func realIP(r *http.Request) (string, error) {
+	addr := r.Header.Get("X-Real-Ip")
+	if addr == "" {
+		addr = r.Header.Get("X-Forwarded-For")
+		if addr == "" {
+			addr = r.RemoteAddr
+		}
+	}
+	ip, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", err
+	}
+	return ip, nil
 }

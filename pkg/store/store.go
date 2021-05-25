@@ -29,8 +29,8 @@ type Store struct {
 	Stats       StatsStore
 }
 
-func New(db *sqlx.DB, storePath string) (Store, error) {
-	imagesStore, err := NewImagesStore(db, storePath)
+func New(db *sqlx.DB, storeRoot string) (Store, error) {
+	imagesStore, err := NewImagesStore(db, storeRoot)
 	if err != nil {
 		return Store{}, err
 	}

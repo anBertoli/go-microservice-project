@@ -193,7 +193,7 @@ func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 	err := errors.New("the provided authentication token is invalid")
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),
-		status:  http.StatusForbidden,
+		status:  http.StatusUnauthorized,
 		err:     err,
 	})
 }

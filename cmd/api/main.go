@@ -34,7 +34,6 @@ func main() {
 	if err != nil {
 		logger.Fatalf("cannot open db connection: %v", err)
 	}
-
 	storage, err := store.New(db, cfg.Storage.Root)
 	if err != nil {
 		logger.Fatalw("creating storage", "err", err)
@@ -81,16 +80,15 @@ func main() {
 	}
 }
 
-// The openDB() function returns a sql.DB connection pool.
 func openDB(cfg config) (*sqlx.DB, error) {
-	// Use sql.Open() to create an empty connection pool, using the DSN from the config
+	// Use sqlx.Open() to create an empty connection pool, using the DSN from the config
 	// struct.
 	db, err := sqlx.Open("postgres", cfg.Db.Dsn)
 	if err != nil {
 		return nil, err
 	}
-	// Set the maximum number of open(in - use + idle) connections in the pool.Note that
-	//  passing a value less than or equal to 0 will mean there is no limit.
+	// Set the maximum number of  (in - use + idle) connections in the pool.Note that
+	// passing a value less than or equal to 0 will mean there is no limit.
 	db.SetMaxOpenConns(cfg.Db.MaxOpenConns)
 	// Set the maximum number of idle connections in the pool. Again, passing a value
 	// less than or equal to 0 will mean there is no limit.
@@ -109,7 +107,7 @@ func openDB(cfg config) (*sqlx.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Return the sql.db connection pool.
+
 	return db, nil
 }
 
