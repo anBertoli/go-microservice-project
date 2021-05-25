@@ -91,7 +91,7 @@ else
   rm -rf /usr/bin/certbot
   sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-  sudo certbot certonly --standalone -m andrea.bertpp@gmail.com -d snapvault.ablab.dev --agree-tos -n
+  sudo certbot certonly --standalone -m andrea.bertpp@gmail.com -d snapvault.ablab.dev -d www.snapvault.ablab.dev --agree-tos -n
 fi
 
 
