@@ -102,6 +102,27 @@ func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
 		return store.ErrForbidden
 	}
 
+	var page = 1
+	for {
+		pagImages, meta, err := gs.store.Images.GetAllForGallery(galleryID, filters.Input{
+			Page:     page,
+			PageSize: 100,
+		})
+		if err != nil {
+			return err
+		}
+		for _, image := range pagImages {
+			err := gs.store.Images.Delete(image.ID)
+			if err != nil {
+				return err
+			}
+		}
+		if meta.LastPage == meta.CurrentPage {
+			break
+		}
+		page++
+	}
+
 	err = gs.store.Galleries.DeleteGallery(galleryID)
 	if err != nil {
 		switch {
@@ -209,7 +230,6 @@ func (gs *GalleriesService) streamGallery(ctx context.Context, w io.Writer, gall
 			PageSize:     100,
 			SortCol:      "id",
 			SortSafeList: []string{"id"},
-			SearchCol:    "title",
 		})
 		if err != nil {
 			return err

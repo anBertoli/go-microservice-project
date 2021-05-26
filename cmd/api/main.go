@@ -81,8 +81,7 @@ func main() {
 }
 
 func openDB(cfg config) (*sqlx.DB, error) {
-	// Use sqlx.Open() to create an empty connection pool, using the DSN from the config
-	// struct.
+	// Create an empty connection pool, using the DSN from the config struct.
 	db, err := sqlx.Open("postgres", cfg.Db.Dsn)
 	if err != nil {
 		return nil, err

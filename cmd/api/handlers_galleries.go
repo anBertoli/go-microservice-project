@@ -8,13 +8,14 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		filter filters.Input
-	}
+// This file contains application methods which signature matches the HTTP handlerFunc one,
+// so they can be registered as endpoints to our router. These methods act as wrappers
+// around the 'core' services of the application. They are used to decouple transport
+// dependent logic and issues from the business logic present in the services.
 
+func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
-	input.filter = filters.Input{
+	filter := filters.Input{
 		Page:                 readInt(queryString, "page", 1),
 		PageSize:             readInt(queryString, "page_size", 20),
 		SortCol:              readString(queryString, "sort", "id"),
@@ -24,7 +25,7 @@ func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *htt
 		SearchColumnSafeList: []string{"title", "description"},
 	}
 
-	galleries, metadata, err := app.galleries.ListAllPublic(r.Context(), input.filter)
+	galleries, metadata, err := app.galleries.ListAllPublic(r.Context(), filter)
 	if err != nil {
 		app.encodeError(w, r, err)
 		return
@@ -34,12 +35,8 @@ func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *htt
 }
 
 func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		filter filters.Input
-	}
-
 	queryString := r.URL.Query()
-	input.filter = filters.Input{
+	filter := filters.Input{
 		Page:                 readInt(queryString, "page", 1),
 		PageSize:             readInt(queryString, "page_size", 20),
 		SortCol:              readString(queryString, "sort", "id"),
@@ -49,7 +46,7 @@ func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Requ
 		SearchColumnSafeList: []string{"title", "description"},
 	}
 
-	galleries, metadata, err := app.galleries.ListAllOwned(r.Context(), input.filter)
+	galleries, metadata, err := app.galleries.ListAllOwned(r.Context(), filter)
 	if err != nil {
 		app.encodeError(w, r, err)
 		return
@@ -58,23 +55,18 @@ func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Requ
 	app.sendJSON(w, r, http.StatusOK, env{"galleries": galleries, "filter": metadata}, nil)
 }
 
+// Several responses are supported for this endpoint. The gallery could be visualized
+// as a JSON-formatted record or downloaded as a tar archive.
 func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.Request) {
-	galleryMode := readImageMode(r.URL.Query(), "mode", dataMode)
-	galleryID, err := readIDParam(r, "gallery-id")
+	galleryMode := readMode(r.URL.Query(), "mode", dataMode)
+	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
 	switch galleryMode {
-	case downloadMode:
-		_, readCloser, err := app.galleries.Download(r.Context(), true, galleryID)
-		if err != nil {
-			app.encodeError(w, r, err)
-			return
-		}
-		app.streamBytes(w, r, readCloser, nil)
-	case attachmentMode:
+	case attachmentMode, viewMode:
 		gallery, readCloser, err := app.galleries.Download(r.Context(), true, galleryID)
 		if err != nil {
 			app.encodeError(w, r, err)
@@ -93,23 +85,18 @@ func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
+// Several responses are supported for this endpoint. The gallery could be visualized
+// as a JSON-formatted record or downloaded as a tar archive.
 func (app *application) getGalleryHandler(w http.ResponseWriter, r *http.Request) {
-	galleryMode := readImageMode(r.URL.Query(), "mode", dataMode)
-	galleryID, err := readIDParam(r, "id")
+	galleryMode := readMode(r.URL.Query(), "mode", dataMode)
+	galleryID, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
 	switch galleryMode {
-	case downloadMode:
-		_, readCloser, err := app.galleries.Download(r.Context(), false, galleryID)
-		if err != nil {
-			app.encodeError(w, r, err)
-			return
-		}
-		app.streamBytes(w, r, readCloser, nil)
-	case attachmentMode:
+	case viewMode, attachmentMode:
 		gallery, readCloser, err := app.galleries.Download(r.Context(), false, galleryID)
 		if err != nil {
 			app.encodeError(w, r, err)
@@ -166,7 +153,7 @@ func (app *application) updateGalleryHandler(w http.ResponseWriter, r *http.Requ
 		app.malformedJSONResponse(w, r, err)
 		return
 	}
-	id, err := readIDParam(r, "id")
+	id, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -187,7 +174,7 @@ func (app *application) updateGalleryHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) deleteGalleryHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := readIDParam(r, "id")
+	id, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return

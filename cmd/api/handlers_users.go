@@ -6,6 +6,11 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// This file contains application methods which signature matches the HTTP handlerFunc one,
+// so they can be registered as endpoints to our router. These methods act as wrappers
+// around the 'core' services of the application. They are used to decouple transport
+// dependent logic and issues from the business logic present in the services.
+
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
@@ -29,10 +34,9 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	app.background(func() {
 		mailData := map[string]interface{}{
 			"activationToken": token,
-			// TODO
-			"hostName": "http://127.0.0.1:4000",
-			"userID":   user.ID,
-			"name":     user.Name,
+			"hostName":        app.config.PublicHostname,
+			"userID":          user.ID,
+			"name":            user.Name,
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.gohtml", mailData)
 		if err != nil {
@@ -73,10 +77,11 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Launch a background goroutine to send the recover token email.
 	app.background(func() {
 		mailData := map[string]interface{}{
 			"recoverToken": plainToken,
-			"hostName":     "http://127.0.0.1:4000",
+			"hostName":     app.config.PublicHostname,
 		}
 		err = app.mailer.Send(input.Email, "recover_key.gohtml", mailData)
 		if err != nil {

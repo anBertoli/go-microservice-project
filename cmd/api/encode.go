@@ -10,8 +10,13 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/tracing"
 )
 
+// The env type is a flexible wrapper used to send JSON-formatted data
+// using the functions provided in this file.
 type env map[string]interface{}
 
+// The sendJSON helper writes the provided JSON-formatted data to response writer,
+// after recording some tracing data. Basically it is a wrapper over the
+// writeJSON function.
 func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status int, data env, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = status
@@ -25,19 +30,14 @@ func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status 
 	}
 }
 
-// The sendJSONError() method is a generic helper for sending JSON-formatted error
-// messages to the ipLimiter with a given status code. Note that we're using an interface{}
-// type for the message parameter, rather than just a string type, as this gives callers
-// more flexibility over the values that we can include in the response.
+// The sendJSONError() method is a helper for sending JSON-formatted error messages
+// to the client, after recording some tracing data.
 func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, resp errResponse) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = resp.status
 	trace.Message = resp.message
 	trace.Err = resp.err
 
-	// Write the response using the writeJSON() helper. If this happens to return an
-	// error then log it, and fall back to sending an empty response with a
-	// 500 Internal Server Error status code.
 	err := writeJSON(w, resp.status, env{
 		"status_code": resp.status,
 		"error":       resp.message,
@@ -49,41 +49,44 @@ func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, re
 	}
 }
 
+// The errResponse struct groups the public message to be provided to the
+// client, the HTTP status code and the internal error to be logged.
 type errResponse struct {
 	message interface{}
 	status  int
 	err     error
 }
 
-// Define a writeJSON() helper for writing responses. This takes the destination
-// http.ResponseWriter, the HTTP status code to send, the data to encode to JSON, and a
-// header map containing any additional HTTP headers we want to include in the response.
+// The writeJSON() helper writes the data to the response writer. The data is
+// JSON-formatted before being sent. Provided headers are set on the response.
 func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header) error {
+
 	// Encode the data to JSON, returning the error if there was one.
-	// Avoid Indent in case of performance issues.
+	// Avoid indentation and newline in case of performance issues,
+	// otherwise it makes the output easier to read for clients.
 	js, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-
-	// Append a newline to make it easier to view in terminal applications.
 	js = append(js, '\n')
 
-	// At this point, we know that we won't encounter any more errors before writing the
-	// response, so it's safe to add any headers that we want to include. We loop
-	// through the header map and add each header to the http.ResponseWriter header map.
+	// Loop through the header map and add each header to the
+	// http.ResponseWriter header map.
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
 
-	// Add the "Content-Type: application/json" header, then write the status code and
-	// JSON response.
+	// Add the mandatory "Content-Type: application/json" header, then write the
+	// status code and JSON response.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, err = w.Write(js)
 	return err
 }
 
+// The streamBytes function is a helper function used to send binary data to the client.
+// The data is extracted from a reader, which if it's also a closer, it will be closed
+// after reading all the content.
 func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, reader io.Reader, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = http.StatusOK
@@ -93,10 +96,9 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 
 	if rc, ok := reader.(io.ReadCloser); ok {
 		defer func() {
-			// If the reader is also a readCloser then defer a function that will close it.
-			// When need to close the reader because if a network issue happens, we need to
-			// signal to the application internals that the streaming must be exited. If the
-			// reader has been completely drained this operation is a no-op.
+			// If the reader is also a closer then defer a function that will close it.
+			// Generally, we need to close the reader to finalize resources or to
+			// signal the end at the data source/generator.
 			err := rc.Close()
 			if err != nil {
 				logger.Errorw("error closing read closer", "err", err)
@@ -104,6 +106,7 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		}()
 	}
 
+	// Set provided headers before start sending data.
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
@@ -113,16 +116,15 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		var netErr *net.OpError
 		switch {
 		case errors.As(err, &netErr):
-			// This is a network/client issue. We cannot do nothing here, so we simply
-			// log the error. This is not an HTTP error, but still report it with
-			// the status 500.
+			// This is a network/client issue. We cannot do a lot here, so we simply
+			// log the error. This is not a 'strict' HTTP error, but we still report
+			// it with the status 500.
 			logger.Errorw("network/client issue streaming bytes", "err", err)
 		default:
-			// The error is originated internally and in this case the error is returned from
-			// the read-closer. The error will be the appropriate one. Here the status code
-			// on the response was already set and we cannot modify it, but we can report
-			// this internally.
-			logger.Errorw("internal error streaming bytes", "err", err)
+			// The error is originated internally. Here the status code on the
+			// response was already set and we cannot modify it, but we can
+			// report this internally.
+			logger.Errorw("streaming bytes", "err", err)
 		}
 
 		trace.HttpStatus = http.StatusInternalServerError

@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	version = "unknown"
+	version = "<unknown>"
 )
 
 // Define a config struct to hold all the configuration settings for our application.
@@ -43,9 +43,11 @@ type config struct {
 	Cors struct {
 		TrustedOrigins []string `json:"trusted_origins"`
 	} `json:"cors"`
-	DisplayVersion bool // not from config file
+	PublicHostname string `json:"public_hostname"`
+	DisplayVersion bool   // not from config file
 }
 
+// Parse command line flags and read in the config file at the provided path.
 func parseConfig() (config, error) {
 	var cfg config
 

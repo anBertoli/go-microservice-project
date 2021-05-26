@@ -21,6 +21,8 @@ import (
 	"github.com/anBertoli/snap-vault/services/users"
 )
 
+// The application struct represents the API and holds all necessary dependencies for
+// our endpoints. HTTP handlers are defined as methods on this struct.
 type application struct {
 	users     users.Service
 	images    images.Service
@@ -32,9 +34,9 @@ type application struct {
 	config    config
 }
 
-// The handler() method returns the server handler, that is it registers all the
-// HTTP API endpoints on the router and returns it. The function is also useful
-// as a 'map' of the API.
+// The handler() method returns the server handler, that is, it registers all the HTTP API
+// endpoints on the router and returns it. The function is also useful as a 'map' of our
+// web service.
 func (app *application) handler() http.Handler {
 	router := mux.NewRouter()
 
@@ -42,13 +44,13 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodGet).Path("/v1/users/activate").HandlerFunc(app.activateUserHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getUserAccountHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/stats").HandlerFunc(app.getUserStatsHandler)
+	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
+	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/users/keys").HandlerFunc(app.listUserKeysHandler)
 	router.Methods(http.MethodPost).Path("/v1/users/keys").HandlerFunc(app.addUserKeyHandler)
 	router.Methods(http.MethodPut).Path("/v1/users/keys/{id}").HandlerFunc(app.editKeyPermissionsHandler)
 	router.Methods(http.MethodDelete).Path("/v1/users/keys/{id}").HandlerFunc(app.deleteUserKeyHandler)
-	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
-	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/galleries").HandlerFunc(app.listGalleriesHandler)
 	router.Methods(http.MethodGet).Path("/v1/galleries/{id}").HandlerFunc(app.getGalleryHandler)
@@ -74,18 +76,13 @@ func (app *application) handler() http.Handler {
 	router.NotFoundHandler = http.HandlerFunc(app.routeNotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedHandler)
 
+	// Apply middlewares to the global handler. Here the order matters, e.g. the enableCORS
+	// middleware should be triggered before the rate limiting one. This because we want to
+	// avoid the circumstance of a pre-flight request allowed and a 'real' request blocked
+	// due to the rate limiting threshold reached.
 	handler := app.authenticate(router)
-
-	if app.config.RateLimit.Enabled {
-		if app.config.RateLimit.PerIp {
-			handler = app.ipRateLimit(handler)
-		} else {
-			handler = app.globalRateLimit(handler)
-		}
-	}
-
+	handler = app.rateLimit(handler)
 	handler = app.enableCORS(handler)
-	handler = app.recoverPanic(handler)
 	handler = app.logging(handler)
 	return handler
 }

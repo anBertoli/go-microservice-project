@@ -7,18 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var (
-	ErrDuplicateEmail    = errors.New("duplicate email")
-	ErrRecordNotFound    = errors.New("record not found")
-	ErrEditConflict      = errors.New("edit conflict")
-	ErrFileAlreadyExists = errors.New("file already exists")
-	ErrEmptyBytes        = errors.New("no bytes")
-	ErrForbidden         = errors.New("forbidden")
-	ErrUnauthenticated   = errors.New("unauthenticated")
-	ErrNotActivated      = errors.New("user not activated")
-	ErrNoPermission      = errors.New("wrong permissions")
-)
-
 type Store struct {
 	Users       UsersStore
 	Keys        KeysStore
@@ -50,6 +38,18 @@ type Auth struct {
 	Keys
 	Permissions
 }
+
+var (
+	ErrDuplicateEmail    = errors.New("duplicate email")
+	ErrRecordNotFound    = errors.New("record not found")
+	ErrEditConflict      = errors.New("edit conflict")
+	ErrFileAlreadyExists = errors.New("file already exists")
+	ErrEmptyBytes        = errors.New("no bytes")
+	ErrForbidden         = errors.New("forbidden")
+	ErrUnauthenticated   = errors.New("unauthenticated")
+	ErrNotActivated      = errors.New("user not activated")
+	ErrNoPermission      = errors.New("wrong permissions")
+)
 
 type privateKey string
 

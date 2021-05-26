@@ -8,6 +8,11 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// This file contains application methods which signature matches the HTTP handlerFunc one,
+// so they can be registered as endpoints to our router. These methods act as wrappers
+// around the 'core' services of the application. They are used to decouple transport
+// dependent logic and issues from the business logic present in the services.
+
 func (app *application) listPublicImagesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -41,7 +46,7 @@ func (app *application) listGalleryImagesHandler(w http.ResponseWriter, r *http.
 		SearchColumnSafeList: []string{"title", "caption"},
 	}
 
-	galleryID, err := readIDParam(r, "gallery-id")
+	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -68,7 +73,7 @@ func (app *application) listPublicGalleryImagesHandler(w http.ResponseWriter, r 
 		SearchColumnSafeList: []string{"title", "caption"},
 	}
 
-	galleryID, err := readIDParam(r, "gallery-id")
+	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -84,8 +89,8 @@ func (app *application) listPublicGalleryImagesHandler(w http.ResponseWriter, r 
 }
 
 func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Request) {
-	imageMode := readImageMode(r.URL.Query(), "mode", dataMode)
-	imageID, err := readIDParam(r, "image-id")
+	imageMode := readMode(r.URL.Query(), "mode", dataMode)
+	imageID, err := readUrlIntParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -99,7 +104,7 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
-	case downloadMode:
+	case viewMode:
 		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
 		if err != nil {
 			app.encodeError(w, r, err)
@@ -122,8 +127,8 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) {
-	imageMode := readImageMode(r.URL.Query(), "mode", dataMode)
-	imageID, err := readIDParam(r, "image-id")
+	imageMode := readMode(r.URL.Query(), "mode", dataMode)
+	imageID, err := readUrlIntParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -137,7 +142,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
-	case downloadMode:
+	case viewMode:
 		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
 		if err != nil {
 			app.encodeError(w, r, err)
@@ -162,7 +167,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 const maxBodyBytes = 1024 * 1024 * 50
 
 func (app *application) createImageHandler(w http.ResponseWriter, r *http.Request) {
-	galleryID, err := readIDParam(r, "gallery-id")
+	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -196,7 +201,7 @@ func (app *application) editImageHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	imageID, err := readIDParam(r, "image-id")
+	imageID, err := readUrlIntParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -216,7 +221,7 @@ func (app *application) editImageHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) deleteImageHandler(w http.ResponseWriter, r *http.Request) {
-	imageID, err := readIDParam(r, "image-id")
+	imageID, err := readUrlIntParam(r, "image-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return

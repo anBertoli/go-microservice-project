@@ -4,6 +4,11 @@ import (
 	"net/http"
 )
 
+// This file contains application methods which signature matches the HTTP handlerFunc one,
+// so they can be registered as endpoints to our router. These methods act as wrappers
+// around the 'core' services of the application. They are used to decouple transport
+// dependent logic and issues from the business logic present in the services.
+
 func (app *application) listUserKeysHandler(w http.ResponseWriter, r *http.Request) {
 	keys, err := app.users.ListUserKeys(r.Context())
 	if err != nil {
@@ -39,7 +44,7 @@ func (app *application) editKeyPermissionsHandler(w http.ResponseWriter, r *http
 		Permissions []string `json:"permissions"`
 	}
 
-	keyID, err := readIDParam(r, "id")
+	keyID, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -60,7 +65,7 @@ func (app *application) editKeyPermissionsHandler(w http.ResponseWriter, r *http
 }
 
 func (app *application) deleteUserKeyHandler(w http.ResponseWriter, r *http.Request) {
-	keyID, err := readIDParam(r, "id")
+	keyID, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return

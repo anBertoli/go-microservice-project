@@ -284,6 +284,7 @@ func (is *ImagesStore) Delete(imageID int64) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
 	err := is.db.GetContext(ctx, &image, `SELECT * FROM images WHERE id = $1`, imageID)
 	if err != nil {
 		switch {

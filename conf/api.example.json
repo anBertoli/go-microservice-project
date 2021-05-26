@@ -1,4 +1,5 @@
 {
+  "address": "127.0.0.1",
   "port": 4000,
   "env": "dev",
   "db": {
@@ -26,5 +27,6 @@
   },
   "cors": {
     "trusted_origins": []
-  }
+  },
+  "public_hostname": "<public-hostname>"
 }

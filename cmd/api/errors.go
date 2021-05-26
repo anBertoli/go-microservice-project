@@ -55,7 +55,6 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 
 // These are generic responses given back to the user. Below there are more specific
 // error responses that may utilize the same HTTP code but differ for the returned message.
-
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.sendJSONError(w, r, errResponse{
 		message: "the server encountered a problem and could not process your request",
@@ -117,7 +116,7 @@ func (app *application) tooBusyResponse(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// used by the router
+// Errors responses used by the router.
 func (app *application) routeNotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	err := errors.New("the requested API endpoint doesn't exist")
 	app.sendJSONError(w, r, errResponse{
@@ -136,7 +135,7 @@ func (app *application) methodNotAllowedHandler(w http.ResponseWriter, r *http.R
 	})
 }
 
-// specific errors
+// More specific error responses.
 func (app *application) malformedJSONResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),
