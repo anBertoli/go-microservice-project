@@ -7,6 +7,9 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/validator"
 )
 
+// The ValidationMiddleware validates incoming data of each request, rejecting them if
+// some pieces of needed information are missing or malformed. The middleware makes
+// sure the next service in the chain will receive valid data.
 type ValidationMiddleware struct {
 	Next Service
 }

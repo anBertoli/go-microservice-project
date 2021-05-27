@@ -8,10 +8,9 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-const (
-	maxBytes = 1024 * 1024 * 5 // 5 mb
-)
-
+// The StatsMiddleware updates the user stats about the number of images and the total
+// stored bytes of a user. Additionally it check if the user has exceeded the space
+// it can use to store data.
 type StatsMiddleware struct {
 	Next     Service
 	Store    store.StatsStore
@@ -41,10 +40,14 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image s
 	if err != nil {
 		return store.Image{}, err
 	}
+
+	// If the total space in use by a user will exceed the threshold after
+	// inserting the current image reject the request.
 	if stats.Space >= sm.MaxBytes {
 		return store.Image{}, ErrMaxSpaceReached
 	}
 
+	// Insert the image, then increment related counters for the user.
 	image, err = sm.Next.Insert(ctx, reader, image)
 	if err != nil {
 		return image, err
@@ -71,6 +74,7 @@ func (sm *StatsMiddleware) Delete(ctx context.Context, imageID int64) (store.Ima
 		return image, err
 	}
 
+	// Decrement images counters for the user.
 	err = sm.Store.IncrementImages(image.UserID, -1)
 	if err != nil {
 		return store.Image{}, err

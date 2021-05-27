@@ -8,6 +8,14 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// The AuthMiddleware validates necessary authorizations for the images service
+// public interface. For further information take a look at the same middleware
+// of the gallery service.
+//
+// If a method is publicly accessible, this middlewares operates as a no-op. Note
+// also that some methods operates in dual-mode, that is, if the request is marked
+// as public it will not check any permission. In these cases, further checks will
+// be done inside the core service.
 type AuthMiddleware struct {
 	Next Service
 }

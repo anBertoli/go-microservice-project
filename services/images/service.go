@@ -8,13 +8,15 @@ import (
 
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
-	"github.com/anBertoli/snap-vault/pkg/validator"
 )
 
+// The GalleriesService retrieves and save gallery images metadata in a relation database
+// and the actual image file in the file system.
 type ImagesService struct {
 	Store store.Store
 }
 
+// Returns a filtered and paginated list of public images.
 func (is *ImagesService) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	images, metadata, err := is.Store.Images.GetAllPublic(filter)
 	if err != nil {
@@ -23,6 +25,8 @@ func (is *ImagesService) ListAllPublic(ctx context.Context, filter filters.Input
 	return images, metadata, nil
 }
 
+// Returns a filtered and paginated list of images about a specific gallery
+// owned by the authenticated user.
 func (is *ImagesService) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	authData := store.ContextGetAuth(ctx)
 
@@ -36,6 +40,9 @@ func (is *ImagesService) ListForGallery(ctx context.Context, public bool, galler
 		}
 	}
 
+	// Depending of the type of the request check if the request could be performed.
+	// If it is a public request, check that the gallery is published, else check
+	// the authenticated user is the owner of the gallery.
 	if public {
 		if !gallery.Published {
 			return nil, filters.Meta{}, store.ErrForbidden
@@ -54,6 +61,7 @@ func (is *ImagesService) ListForGallery(ctx context.Context, public bool, galler
 	return images, metadata, nil
 }
 
+// Fetch the image data, the request could be public or authenticated.
 func (is *ImagesService) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 
@@ -62,6 +70,9 @@ func (is *ImagesService) Get(ctx context.Context, public bool, imageID int64) (s
 		return store.Image{}, err
 	}
 
+	// Depending of the type of the request check if the request could be performed.
+	// If it is a public request, check that the gallery is published, else check
+	// the authenticated user is the owner of the gallery.
 	if public {
 		if !image.Published {
 			return store.Image{}, store.ErrForbidden
@@ -75,12 +86,17 @@ func (is *ImagesService) Get(ctx context.Context, public bool, imageID int64) (s
 	return image, nil
 }
 
+// Download a specific image, the request could be public or authenticated. The images bytes are
+// provided as a reader.
 func (is *ImagesService) Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error) {
 	image, err := is.Store.Images.Get(imageID)
 	if err != nil {
 		return store.Image{}, nil, err
 	}
 
+	// Depending of the type of the request check if the request could be performed.
+	// If it is a public request, check that the gallery is published, else check
+	// the authenticated user is the owner of the gallery.
 	if public {
 		if !image.Published {
 			return store.Image{}, nil, store.ErrForbidden
@@ -105,6 +121,8 @@ func (is *ImagesService) Download(ctx context.Context, public bool, imageID int6
 	return image, readCloser, nil
 }
 
+// Creates a new image for a specific gallery owned by the authenticated user. The actual image
+// bytes are provided as a reader from the caller.
 func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 
@@ -132,12 +150,9 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	})
 	if err != nil {
 		switch {
+		// The gallery was deleted concurrently during this request.
 		case strings.Contains(err.Error(), "image_to_galleries_fk"):
 			return store.Image{}, store.ErrEditConflict
-		case errors.Is(err, store.ErrEmptyBytes):
-			v := validator.New()
-			v.AddError("body", "no bytes in body")
-			return store.Image{}, v
 		default:
 			return store.Image{}, err
 		}
@@ -146,6 +161,8 @@ func (is *ImagesService) Insert(ctx context.Context, reader io.Reader, image sto
 	return image, nil
 }
 
+// Updates an existing image with the data provided, the image gallery must be owned
+// by the authenticated user.
 func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 
@@ -159,6 +176,7 @@ func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.I
 		}
 	}
 
+	// Make sure that the authenticated user is the owner of the gallery.
 	if oldImage.UserID != authData.User.ID {
 		return store.Image{}, store.ErrForbidden
 	}
@@ -169,6 +187,7 @@ func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.I
 	image, err = is.Store.Images.Update(oldImage)
 	if err != nil {
 		switch {
+		// The gallery was deleted concurrently during this request.
 		case strings.Contains(err.Error(), "image_to_galleries_fk"):
 			return store.Image{}, store.ErrEditConflict
 		default:
@@ -179,6 +198,7 @@ func (is *ImagesService) Update(ctx context.Context, image store.Image) (store.I
 	return image, nil
 }
 
+// Delete a specific image. The authenticated user must be the owner of the image gallery.
 func (is *ImagesService) Delete(ctx context.Context, imageID int64) (store.Image, error) {
 	authData := store.ContextGetAuth(ctx)
 
@@ -192,6 +212,7 @@ func (is *ImagesService) Delete(ctx context.Context, imageID int64) (store.Image
 		}
 	}
 
+	// Make sure that the authenticated user is the owner of the gallery.
 	if image.UserID != authData.User.ID {
 		return store.Image{}, store.ErrForbidden
 	}
@@ -200,7 +221,7 @@ func (is *ImagesService) Delete(ctx context.Context, imageID int64) (store.Image
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return store.Image{}, store.ErrRecordNotFound
+			return store.Image{}, store.ErrEditConflict
 		default:
 			return store.Image{}, err
 		}

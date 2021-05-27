@@ -250,13 +250,6 @@ func (is *ImagesStore) writeImage(r io.Reader, path string) (int64, error) {
 	if err != nil {
 		return n, err
 	}
-	if n == 0 {
-		err := os.RemoveAll(path)
-		if err != nil {
-			return n, err
-		}
-		return n, ErrEmptyBytes
-	}
 	return n, err
 }
 

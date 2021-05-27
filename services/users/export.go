@@ -8,6 +8,8 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// Public interface for the users service. The service is exposed
+// via transport-specific adapters, e.g. the JSON-HTTP api.
 type Service interface {
 	RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error)
 	ActivateUser(ctx context.Context, token string) (store.User, error)
@@ -30,6 +32,8 @@ type KeysList struct {
 
 var ErrMainKeysEdit = errors.New("main keys not editable")
 
+// This checks makes sure that all service implementation remain
+// valid while we refactor our code.
 var _ Service = &UsersService{}
 var _ Service = &AuthMiddleware{}
 var _ Service = &ValidationMiddleware{}

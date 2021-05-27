@@ -11,11 +11,18 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/validator"
 )
 
+// The UsersService retrieves and save users data and user statistics in a relation database.
 type UsersService struct {
 	Store store.Store
 }
 
+// Register a new user into the system and generate 'main' keys for the user. The
+// user must be activated before using any other parts of the application. The
+// auth key and the token must be delivered somehow to the user, since we don't
+// store the plain text versions.
 func (us *UsersService) RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error) {
+
+	// Hash the password. the plain text password is not stored in the db.
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
@@ -32,6 +39,8 @@ func (us *UsersService) RegisterUser(ctx context.Context, name, email, password 
 		return store.User{}, store.Keys{}, "", err
 	}
 
+	// Create new keys for the user with 'main' permissions. The plan version
+	// of the key is returned to the caller and not stored anywhere.
 	keys, err := us.Store.Keys.New(user.ID)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
@@ -41,11 +50,14 @@ func (us *UsersService) RegisterUser(ctx context.Context, name, email, password 
 		return store.User{}, store.Keys{}, "", err
 	}
 
+	// Create an activation token that must be delivered in some form to
+	// the user. This is responsibility of the caller.
 	activationToken, err := us.Store.Tokens.New(user.ID, time.Hour*24, store.ScopeActivation)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
 	}
 
+	// Initialize stats for the user.
 	err = us.Store.Stats.InsertForUser(user.ID)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
@@ -54,6 +66,7 @@ func (us *UsersService) RegisterUser(ctx context.Context, name, email, password 
 	return user, keys, activationToken.Plain, nil
 }
 
+// Activate the user using the generated activation token.
 func (us *UsersService) ActivateUser(ctx context.Context, token string) (store.User, error) {
 
 	user, err := us.Store.Users.GetForToken(store.ScopeActivation, token)
@@ -80,6 +93,7 @@ func (us *UsersService) ActivateUser(ctx context.Context, token string) (store.U
 		}
 	}
 
+	// Delete all tokens with activation scope.
 	err = us.Store.Tokens.DeleteAllForUser(store.ScopeActivation, user.ID)
 	if err != nil {
 		switch {
@@ -92,8 +106,10 @@ func (us *UsersService) ActivateUser(ctx context.Context, token string) (store.U
 	return user, nil
 }
 
+// Authenticate the user with email and password and generate a token used to
+// recover the main auth key for the account. The token must be delivered
+// somehow to the user, since we don't store the plain text version.
 func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password string) (string, error) {
-
 	user, err := us.Store.Users.GetForEmail(email)
 	if err != nil {
 		switch {
@@ -104,6 +120,7 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 		}
 	}
 
+	// Hash the password and compare it with the has we have stored into the db.
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		switch {
@@ -114,6 +131,7 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 		}
 	}
 
+	// Create a new key recovery token.
 	recoverKeysToken, err := us.Store.Tokens.New(user.ID, time.Hour*3, store.ScopeRecoverMainKeys)
 	if err != nil {
 		return "", err
@@ -122,6 +140,8 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 	return recoverKeysToken.Plain, nil
 }
 
+// Regenerate the main auth key using the provided key recovery token. The auth key
+// must be delivered somehow to the user, since we don't store the plain text version.
 func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store.Keys, error) {
 
 	user, err := us.Store.Users.GetForToken(store.ScopeRecoverMainKeys, token)
@@ -136,6 +156,7 @@ func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store
 		}
 	}
 
+	// Retrieve all the user auth keys and search the main one. If found, delete it.
 	keys, err := us.Store.Keys.GetAllForUser(user.ID)
 	if err != nil {
 		return store.Keys{}, nil
@@ -154,6 +175,8 @@ func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store
 		}
 	}
 
+	// Regenerate the auth key. The plan text version of the key is returned
+	// and must be delivered to the user, since it is not store anywhere.
 	key, err := us.Store.Keys.New(user.ID)
 	if err != nil {
 		return store.Keys{}, err
@@ -163,6 +186,7 @@ func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store
 		return store.Keys{}, err
 	}
 
+	// Clean recovery key tokens for the user.
 	err = us.Store.Tokens.DeleteAllForUser(store.ScopeRecoverMainKeys, user.ID)
 	if err != nil {
 		switch {
@@ -175,6 +199,7 @@ func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store
 	return key, nil
 }
 
+// List all the auth keys of the user.
 func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
 	auth := store.ContextGetAuth(ctx)
 
@@ -183,14 +208,7 @@ func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
 		return nil, err
 	}
 
-	if !auth.Permissions.Include(store.PermissionMain) {
-		for _, k := range keys {
-			if k.ID == auth.Keys.ID {
-				keys = []store.Keys{k}
-			}
-		}
-	}
-
+	// Enrich the response with keys permissions.
 	var keysList []KeysList
 	for _, key := range keys {
 		permissions, err := us.Store.Permissions.GetAllForKey(key.AuthKeyHash, true)
@@ -207,6 +225,7 @@ func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
 	return keysList, nil
 }
 
+// Create a new auth key for the authenticated user with the provided permissions.
 func (us *UsersService) AddUserKey(ctx context.Context, permissions store.Permissions) (store.Keys, error) {
 	auth := store.ContextGetAuth(ctx)
 
@@ -223,9 +242,12 @@ func (us *UsersService) AddUserKey(ctx context.Context, permissions store.Permis
 	return keys, nil
 }
 
+// Edit an existing auth key for the authenticated user with the provided permissions.
+// The main auth key for the account cannot be edited.
 func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permissions store.Permissions) (store.Keys, store.Permissions, error) {
 	auth := store.ContextGetAuth(ctx)
 
+	// Search the specified auth key.
 	var targetKeys *store.Keys
 	userKeys, err := us.Store.Keys.GetAllForUser(auth.User.ID)
 	if err != nil {
@@ -240,6 +262,7 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 		return store.Keys{}, store.Permissions{}, store.ErrRecordNotFound
 	}
 
+	// Avoid editing the main auth key.
 	oldPermissions, err := us.Store.Permissions.GetAllForKey(targetKeys.AuthKeyHash, true)
 	if err != nil {
 		return store.Keys{}, store.Permissions{}, err
@@ -248,6 +271,7 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 		return store.Keys{}, store.Permissions{}, ErrMainKeysEdit
 	}
 
+	// Replace old permissions with new permissions.
 	err = us.Store.Permissions.ReplaceForKey(targetKeys.ID, permissions...)
 	if err != nil {
 		return store.Keys{}, store.Permissions{}, err
@@ -256,6 +280,8 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 	return *targetKeys, permissions, nil
 }
 
+// Delete an existing auth key for the authenticated user. The main auth key for the account
+// cannot be deleted.
 func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 	auth := store.ContextGetAuth(ctx)
 
@@ -273,6 +299,7 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 		return store.ErrRecordNotFound
 	}
 
+	// Avoid deleting the main auth key.
 	oldPermissions, err := us.Store.Permissions.GetAllForKey(targetKeys.AuthKeyHash, true)
 	if err != nil {
 		return err
@@ -294,6 +321,7 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 	return nil
 }
 
+// Retrieve statistics about the user.
 func (us *UsersService) GetStats(ctx context.Context) (store.Stats, error) {
 	auth := store.ContextGetAuth(ctx)
 

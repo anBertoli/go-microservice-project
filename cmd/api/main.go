@@ -42,19 +42,13 @@ func main() {
 	var usersService users.Service
 	usersService = &users.UsersService{Store: storage}
 	usersService = &users.ValidationMiddleware{Next: usersService}
-	usersService = &users.AuthMiddleware{
-		Next:  usersService,
-		Store: storage,
-	}
+	usersService = &users.AuthMiddleware{Next: usersService}
 
 	var galleriesService galleries.Service
 	galleriesService = galleries.NewGalleriesService(storage, logger, 20)
 	galleriesService = &galleries.StatsMiddleware{Store: storage.Stats, Next: galleriesService}
 	galleriesService = &galleries.ValidationMiddleware{Next: galleriesService}
-	galleriesService = &galleries.AuthMiddleware{
-		Next:  galleriesService,
-		Store: storage,
-	}
+	galleriesService = &galleries.AuthMiddleware{Next: galleriesService}
 
 	var imagesService images.Service
 	imagesService = &images.ImagesService{Store: storage}
