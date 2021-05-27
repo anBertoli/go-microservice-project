@@ -99,11 +99,8 @@ func (app *application) logging(next http.Handler) http.Handler {
 		// Create a request trace, and put it into the request context. Note that a
 		// pointer is used, so functions that retrieve the trace could simply modify
 		// in place the value pointed to.
-		requestTrace := &tracing.RequestTrace{
-			ID:    tracing.GenRequestID(20),
-			Start: time.Now().UTC(),
-		}
-		r = tracing.TraceToRequestCtx(r, requestTrace)
+		r = tracing.NewTraceToRequest(r)
+		requestTrace := tracing.TraceFromRequestCtx(r)
 
 		// Perform the first log about the incoming request.
 		ip, _ := realIP(r)
@@ -130,8 +127,8 @@ func (app *application) logging(next http.Handler) http.Handler {
 			"end_time", end,
 			"duration", end.Sub(requestTrace.Start),
 		}
-		if requestTrace.Err != nil {
-			fields = append(fields, "err", requestTrace.Err)
+		if requestTrace.PrivateErr != nil {
+			fields = append(fields, "err", requestTrace.PrivateErr)
 		}
 
 		switch requestTrace.HttpStatus / 100 {

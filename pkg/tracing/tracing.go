@@ -6,9 +6,15 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"go.uber.org/zap"
 )
+
+// The tracing package provides request tracing via a RequestTrace struct shared via
+// contexts. The functions present here could be used to create, set and retrieve
+// request traces data from contexts objects.
+//
+// Note that by using the function of this package, other parts of the application
+// could retrieve an anonymous but safe trace from a context even if was not set
+// before.
 
 type privateKey string
 
@@ -18,8 +24,16 @@ type RequestTrace struct {
 	ID         string
 	Start      time.Time
 	HttpStatus int
-	Message    interface{}
-	Err        error
+	PubMessage interface{}
+	PrivateErr error
+}
+
+func NewTraceToRequest(r *http.Request) *http.Request {
+	trace := RequestTrace{
+		ID:    genRequestID(25),
+		Start: time.Now().UTC(),
+	}
+	return TraceToRequestCtx(r, &trace)
 }
 
 func TraceToRequestCtx(r *http.Request, tr *RequestTrace) *http.Request {
@@ -38,18 +52,20 @@ func TraceFromRequestCtx(r *http.Request) *RequestTrace {
 	}
 }
 
-func LoggerWithRequestID(ctx context.Context, logger *zap.SugaredLogger) *zap.SugaredLogger {
-	trace, ok := ctx.Value(requestTraceKey).(*RequestTrace)
-	if !ok {
-		trace = &RequestTrace{
-			ID: "<no request id>",
-		}
-	}
-	logger.With("id", trace.ID)
-	return logger
+func TraceToCtx(ctx context.Context, tr *RequestTrace) context.Context {
+	return context.WithValue(ctx, requestTraceKey, tr)
 }
 
-func GenRequestID(length int) string {
+func TraceFromCtx(ctx context.Context) *RequestTrace {
+	if trace, ok := ctx.Value(requestTraceKey).(*RequestTrace); ok {
+		return trace
+	}
+	return &RequestTrace{
+		ID: "<no request id>",
+	}
+}
+
+func genRequestID(length int) string {
 	chars := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	rand.Seed(time.Now().UnixNano())
 	var b strings.Builder

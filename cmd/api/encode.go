@@ -20,13 +20,13 @@ type env map[string]interface{}
 func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status int, data env, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = status
-	trace.Err = nil
+	trace.PrivateErr = nil
 
 	err := writeJSON(w, status, data, headers)
 	if err != nil {
 		app.logger.Errorw("sending json", "id", trace.ID, "err", err)
 		trace.HttpStatus = http.StatusInternalServerError
-		trace.Err = err
+		trace.PrivateErr = err
 	}
 }
 
@@ -35,8 +35,8 @@ func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status 
 func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, resp errResponse) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = resp.status
-	trace.Message = resp.message
-	trace.Err = resp.err
+	trace.PubMessage = resp.message
+	trace.PrivateErr = resp.err
 
 	err := writeJSON(w, resp.status, env{
 		"status_code": resp.status,
@@ -45,7 +45,7 @@ func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, re
 	if err != nil {
 		app.logger.Errorw("sending json", "id", trace.ID, "err", err)
 		trace.HttpStatus = http.StatusInternalServerError
-		trace.Err = err
+		trace.PrivateErr = err
 	}
 }
 
@@ -90,7 +90,7 @@ func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header)
 func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, reader io.Reader, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
 	trace.HttpStatus = http.StatusOK
-	trace.Err = nil
+	trace.PrivateErr = nil
 
 	logger := app.logger.With("id", trace.ID)
 
@@ -128,6 +128,6 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		}
 
 		trace.HttpStatus = http.StatusInternalServerError
-		trace.Err = err
+		trace.PrivateErr = err
 	}
 }

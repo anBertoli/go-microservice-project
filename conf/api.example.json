@@ -28,5 +28,5 @@
   "cors": {
     "trusted_origins": []
   },
-  "public_hostname": "<public-hostname>"
+  "public_hostname": "https://<public-hostname>"
 }

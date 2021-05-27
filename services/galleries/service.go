@@ -110,7 +110,7 @@ func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID
 	// Start a goroutine in charge of streaming the compressed tar archive to the provided
 	// writer. The writer is an io.Pipe, which is necessary since the caller expects a reader.
 	// The io.Pipe matches reads and writes one to one.
-	logger := tracing.LoggerWithRequestID(ctx, gs.logger)
+	logger := gs.logger.With("id", tracing.TraceFromCtx(ctx).ID)
 	r, w := io.Pipe()
 
 	go func() {

@@ -99,7 +99,7 @@ func (app *application) unauthenticatedResponse(w http.ResponseWriter, r *http.R
 }
 
 func (app *application) editConflictResponse(w http.ResponseWriter, r *http.Request) {
-	err := errors.New("unable to update the record due to a conflict, please try again")
+	err := errors.New("unable to update the resource due to a conflict, please try again")
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),
 		status:  http.StatusConflict,

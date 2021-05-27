@@ -8,11 +8,6 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-// This file contains application methods which signature matches the HTTP handlerFunc one,
-// so they can be registered as endpoints to our router. These methods act as wrappers
-// around the 'core' services of the application. They are used to decouple transport
-// dependent logic and issues from the business logic present in the services.
-
 func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{

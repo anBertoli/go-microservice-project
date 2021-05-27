@@ -16,9 +16,6 @@ type Input struct {
 	SearchColumnSafeList []string
 }
 
-// Check that the client-provided SortCol field matches one of the entries in our sortList
-// and if it does, extract the column name from the SortCol field by stripping the leading
-// hyphen character (if one exists).
 func (p Input) SortColumn() string {
 	return strings.TrimPrefix(p.SortCol, "-")
 }
@@ -40,6 +37,8 @@ func (p Input) Offset() int {
 	return (p.Page - 1) * p.PageSize
 }
 
+// Make sure the filter input is valid, that is, the sort col is valid (listed in
+// SortSafeList) and the search col is valis (contained in the SearchColumnSafeList).
 func (p Input) Validate() error {
 	var ok bool
 	for _, safeValue := range p.SortSafeList {
@@ -58,21 +57,11 @@ func (p Input) Validate() error {
 	return fmt.Errorf("%s not allowed as search column", p.SearchCol)
 }
 
-type Meta struct {
-	CurrentPage  int    `json:"current_page"`
-	PageSize     int    `json:"page_size"`
-	FirstPage    int    `json:"first_page"`
-	LastPage     int    `json:"last_page"`
-	TotalRecords int64  `json:"total_records"`
-	Search       string `json:"search,omitempty"`
-	SearchField  string `json:"search_field,omitempty"`
-}
-
-// The CalculateOutput() function calculates the appropriate pagination metadata
-// values given the total number of records, current page, and page size values. Note
-// that the last page value is calculated using the math.Ceil() function, which rounds
-// up a float to the nearest integer. So, for example, if there were 12 records in total
-// and a page size of 5, the last page value would be math.Ceil(12/5) = 3.
+// The CalculateOutput() function calculates the appropriate pagination metadata given the
+// number of obtained records, current page, and page size values. Note that the last page
+// value is calculated using the math.Ceil() function, which rounds up a float to the
+// nearest integer. So, for example, if there were 12 records in total and a page size
+// of 5, the last page value would be math.Ceil(12/5) = 3.
 func (p Input) CalculateOutput(totalRecords int64) Meta {
 	searchField := ""
 	if p.Search != "" {
@@ -93,4 +82,14 @@ func (p Input) CalculateOutput(totalRecords int64) Meta {
 	}
 
 	return meta
+}
+
+type Meta struct {
+	CurrentPage  int    `json:"current_page"`
+	PageSize     int    `json:"page_size"`
+	FirstPage    int    `json:"first_page"`
+	LastPage     int    `json:"last_page"`
+	TotalRecords int64  `json:"total_records"`
+	Search       string `json:"search,omitempty"`
+	SearchField  string `json:"search_field,omitempty"`
 }
