@@ -9,6 +9,8 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// Public interface for the gallery service. The service is exposed
+// via transport-specific adapters, e.g. the JSON-HTTP api.
 type Service interface {
 	ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error)
 	ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error)
@@ -19,8 +21,12 @@ type Service interface {
 	Delete(ctx context.Context, galleryID int64) error
 }
 
-var ErrBusy = errors.New("busy")
+var (
+	ErrBusy = errors.New("busy")
+)
 
+// This checks makes sure that all service implementation remain
+// valid while we refactor our code.
 var _ Service = &GalleriesService{}
 var _ Service = &AuthMiddleware{}
 var _ Service = &ValidationMiddleware{}

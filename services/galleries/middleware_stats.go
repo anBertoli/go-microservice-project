@@ -8,9 +8,10 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// The StatsMiddleware updates the user stats about the number of galleries.
 type StatsMiddleware struct {
-	Next  Service
 	Store store.StatsStore
+	Next  Service
 }
 
 func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {

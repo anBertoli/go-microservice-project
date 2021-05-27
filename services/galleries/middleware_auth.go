@@ -8,9 +8,18 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// The AuthMiddleware validates necessary authorizations for the galleries service
+// public interface. Authentication data must be already present in the context
+// argument. Each method that needs to perform some authorization checks extracts
+// the auth data and validates the permissions. Note that teh permissions are tied
+// to the auth key not directly to the user.
+//
+// If a method is publicly accessible, this middlewares operates as a no-op. Note
+// also that some methods operates in dual-mode, that is, if the request is marked
+// as public it will not check any permission. In these cases, further checks will
+// be done inside the core service.
 type AuthMiddleware struct {
-	Store store.Store
-	Next  Service
+	Next Service
 }
 
 func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
