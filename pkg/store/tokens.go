@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Define the scoped of the tokens used in the application.
+// Define the scopedof the tokens used in the application.
 const (
 	ScopeActivation      = "activation"
 	ScopeRecoverMainKeys = "recover-keys"
@@ -22,7 +22,7 @@ type Token struct {
 	CreatedAt time.Time `db:"created_at" json:"-"`
 }
 
-// The store abstraction to manipulate tokens into the database. It holds a DB
+// The store abstraction used to manipulate tokens into the database. It holds a DB
 // connection pool. Only the hashed version of the token are saved into the db.
 type TokenStore struct {
 	DB *sqlx.DB
@@ -75,6 +75,7 @@ func (m *TokenStore) DeleteAllForUser(scope string, userID int64) error {
 	if err != nil {
 		return err
 	}
+
 	n, err := res.RowsAffected()
 	if err != nil {
 		return err

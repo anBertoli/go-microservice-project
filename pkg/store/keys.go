@@ -20,7 +20,7 @@ type Keys struct {
 	UserID      int64     `db:"user_id" json:"-"`
 }
 
-// The store abstraction to manipulate user auth keys into the database. It holds a
+// The store abstraction used to manipulate user auth keys into the database. It holds a
 // DB connection pool. Only the hashed version of the keys are saved into the db.
 type KeysStore struct {
 	DB *sqlx.DB
@@ -45,7 +45,7 @@ func (ks *KeysStore) New(userID int64) (Keys, error) {
 	return keys, nil
 }
 
-// Retrieve auth key data starting from the plain text version of the key.
+// Retrieve auth key data using the plain text version of the key.
 func (ks *KeysStore) GetForPlainKey(key string) (Keys, error) {
 	var (
 		keys    Keys
@@ -130,9 +130,9 @@ func (ks *KeysStore) DeleteKey(keyID, userID int64) error {
 	return nil
 }
 
+// Generate a random token/key using the operating system's CSPRNG and compute the hash
+// of it. Return the base64-encoded version of both.
 func generateToken() (string, string, error) {
-	// Use the Read() function from the crypto/rand package to fill the byte slice
-	// with random bytes from your operating system's CSPRNG.
 	randomBytes := make([]byte, 16)
 	_, err := rand.Read(randomBytes)
 	if err != nil {

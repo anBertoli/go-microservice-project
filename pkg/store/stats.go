@@ -18,7 +18,7 @@ type Stats struct {
 	Version   int       `db:"version" json:"-"`
 }
 
-// The store abstraction to manipulate permissions into the database. It holds a
+// The store abstraction used o manipulate user statistics into the database. It holds a
 // DB connection pool.
 type StatsStore struct {
 	DB *sqlx.DB
@@ -56,7 +56,7 @@ func (ss *StatsStore) InitStatsForUser(userID int64) error {
 	return err
 }
 
-// Increment the images counter statistic for a specific user.
+// Increment or decrement the images counter statistic for a specific user.
 func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -80,12 +80,12 @@ func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 		return err
 	}
 	if rn == 0 {
-		return ErrEditConflict
+		return ErrRecordNotFound
 	}
 	return nil
 }
 
-// Increment the space used statistic (in bytes) for a specific user.
+// Increment or decrement the space-used statistic (in bytes) for a specific user.
 func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -109,12 +109,12 @@ func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 		return err
 	}
 	if rn == 0 {
-		return ErrEditConflict
+		return ErrRecordNotFound
 	}
 	return nil
 }
 
-// Increment the galleries counter statistic for a specific user.
+// Increment or decrement the galleries counter statistic for a specific user.
 func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -138,7 +138,7 @@ func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 		return err
 	}
 	if rn == 0 {
-		return ErrEditConflict
+		return ErrRecordNotFound
 	}
 	return nil
 }

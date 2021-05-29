@@ -6,6 +6,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// The Store struct is a wrapper around the different types of storages
+// present in this package.
 type Store struct {
 	Users       UsersStore
 	Keys        KeysStore
@@ -16,6 +18,7 @@ type Store struct {
 	Stats       StatsStore
 }
 
+// Create a new Store struct.
 func New(db *sqlx.DB, storeRoot string) (Store, error) {
 	imagesStore, err := NewImagesStore(db, storeRoot)
 	if err != nil {

@@ -21,13 +21,13 @@ type User struct {
 	Version      int       `db:"version" json:"-"`
 }
 
-// The store abstraction to manipulate users into our postgres database.
+// The store abstraction used to manipulate users into our postgres database.
 // It holds a DB connection pool.
 type UsersStore struct {
 	DB *sqlx.DB
 }
 
-// Retrieve a user from its email.
+// Retrieve a user using its email.
 func (us *UsersStore) GetForEmail(email string) (User, error) {
 	var user User
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -47,8 +47,8 @@ func (us *UsersStore) GetForEmail(email string) (User, error) {
 }
 
 // Retrieve a user from one of its auth keys. The provided key argument is
-// the plain text version of the auth key, and it's hashed to search the
-// user into the database.
+// the plain text version of the auth key and it's hashed before searching
+// the user into the database.
 func (us *UsersStore) GetForKey(key string) (User, error) {
 	var (
 		user    User
@@ -119,12 +119,15 @@ func (us *UsersStore) Insert(user User) (User, error) {
 
 	if err != nil {
 		switch {
+		// We can detect if a user with the same
+		// email already exists in our DB.
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
 			return User{}, ErrDuplicateEmail
 		default:
 			return User{}, err
 		}
 	}
+
 	return user, nil
 }
 
@@ -141,7 +144,8 @@ func (us *UsersStore) Update(user User) (User, error) {
 	`, user.Name, user.Email, user.PasswordHash, user.Activated, user.ID, user.Version)
 	if err != nil {
 		switch {
-		// We can detect if a user with the same email already exists in our DB.
+		// We can detect if a user with the same
+		// email already exists in our DB.
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
 			return User{}, ErrDuplicateEmail
 		case errors.Is(err, sql.ErrNoRows):

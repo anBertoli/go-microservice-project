@@ -10,11 +10,12 @@ import (
 	"github.com/lib/pq"
 )
 
-// List of existing permissions, this will be stored into the database
-// permissions table as is. They will be linked to auth keys, but they
-// are 'constants' in our DB and are not editable from the application.
+// List of existing permissions, these will be stored into the database permissions table
+// directly as they are (have a look at migration files). Permissions will be linked to
+// auth keys during as part of the normal API operations, but keep in mind that they are
+// 'constants' in our DB and are not directly editable from our application.
 const (
-	PermissionMain = "*:*" // non editable
+	PermissionMain = "*:*" // non manipulable
 
 	PermissionListKeys   = "keys:list"
 	PermissionCreateKeys = "keys:create"
@@ -36,8 +37,6 @@ const (
 )
 
 // The list of permissions that could be linked or unlinked from auth keys.
-// In other words, requests can only modify this permissions (the 'main
-// permission' for a account is excluded).
 var EditablePermissions = Permissions{
 	PermissionListKeys,
 	PermissionCreateKeys,
@@ -55,11 +54,11 @@ var EditablePermissions = Permissions{
 	PermissionDownloadImage,
 }
 
-// Define a type to manipulate easily permissions.
+// Define a type to easily manipulate permissions.
 type Permissions []string
 
 // Check that at least one of the provided codes is included in the
-// permissions receiver (p).
+// permissions slice.
 func (p Permissions) Include(codes ...string) bool {
 	for i := range p {
 		for _, c := range codes {
@@ -71,7 +70,7 @@ func (p Permissions) Include(codes ...string) bool {
 	return false
 }
 
-// Filter and return invalids permissions.
+// Filter and return invalid permissions.
 func (p Permissions) Invalids() Permissions {
 	var invalids Permissions
 	for i := range p {
@@ -82,7 +81,7 @@ func (p Permissions) Invalids() Permissions {
 	return invalids
 }
 
-// The store abstraction to manipulate permissions into the database. It holds a
+// The store abstraction used to manipulate permissions into the database. It holds a
 // DB connection pool.
 type PermissionsStore struct {
 	DB *sqlx.DB
@@ -120,8 +119,9 @@ func (ps *PermissionsStore) GetAllForKey(key string, isKeyHashed bool) (Permissi
 	return permissions, nil
 }
 
-// Replace associated permissions of an auth key with the provided permissions. The old
-// permissions are deleted and the new permissions are inserted into a transaction.
+// Replace associated permissions of an auth key with the provided permissions. The
+// old permissions are deleted while the new permissions are inserted in a single
+// transaction.
 func (ps *PermissionsStore) ReplaceForKey(keyID int64, codes ...string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
