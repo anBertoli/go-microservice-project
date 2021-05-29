@@ -19,7 +19,7 @@ import (
 // sure the next service in the chain will receive valid data and computes the
 // MIME type of the image.
 type ValidationMiddleware struct {
-	Next Service
+	Service
 }
 
 func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
@@ -29,7 +29,7 @@ func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filter
 		v.AddError("pagination", err.Error())
 		return nil, filters.Meta{}, v
 	}
-	return vm.Next.ListAllPublic(ctx, filter)
+	return vm.Service.ListAllPublic(ctx, filter)
 }
 
 func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
@@ -39,15 +39,7 @@ func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, public bool,
 		v.AddError("pagination", err.Error())
 		return nil, filters.Meta{}, v
 	}
-	return vm.Next.ListForGallery(ctx, public, galleryID, filter)
-}
-
-func (vm *ValidationMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
-	return vm.Next.Get(ctx, public, imageID)
-}
-
-func (vm *ValidationMiddleware) Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error) {
-	return vm.Next.Download(ctx, public, imageID)
+	return vm.Service.ListForGallery(ctx, public, galleryID, filter)
 }
 
 func (vm *ValidationMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
@@ -85,7 +77,7 @@ func (vm *ValidationMiddleware) Insert(ctx context.Context, reader io.Reader, im
 	// that will read sequentially from the provided readers.
 	reader = io.MultiReader(bytes.NewReader(buf), reader)
 
-	return vm.Next.Insert(ctx, reader, image)
+	return vm.Service.Insert(ctx, reader, image)
 }
 
 func (vm *ValidationMiddleware) Update(ctx context.Context, image store.Image) (store.Image, error) {
@@ -94,9 +86,5 @@ func (vm *ValidationMiddleware) Update(ctx context.Context, image store.Image) (
 	if !v.Ok() {
 		return store.Image{}, v
 	}
-	return vm.Next.Update(ctx, image)
-}
-
-func (vm *ValidationMiddleware) Delete(ctx context.Context, imageID int64) (store.Image, error) {
-	return vm.Next.Delete(ctx, imageID)
+	return vm.Service.Update(ctx, image)
 }

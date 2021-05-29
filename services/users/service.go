@@ -226,6 +226,12 @@ func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
 	return keysList, nil
 }
 
+type KeysList struct {
+	AuthKeyID   int64             `json:"auth_key_id"`
+	CreatedAt   time.Time         `json:"created_at"`
+	Permissions store.Permissions `json:"permissions"`
+}
+
 // Create a new auth key for the authenticated user with the provided permissions.
 func (us *UsersService) AddUserKey(ctx context.Context, permissions store.Permissions) (store.Keys, error) {
 	authData := auth.MustContextGetAuth(ctx)

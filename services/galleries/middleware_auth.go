@@ -9,33 +9,27 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-// The AuthMiddleware validates necessary authorizations for the galleries service
-// public interface. Authentication data must be already present in the context
-// argument. Each method that needs to perform some authorization checks extracts
-// the auth data and validates the permissions. Note that teh permissions are tied
-// to the auth key not directly to the user.
+// The AuthMiddleware performs authentication and validates necessary authorizations
+// for the galleries service. Authentication is performed starting from the auth key
+// eventually present in the context passed in.
 //
-// If a method is publicly accessible, this middlewares operates as a no-op. Note
-// also that some methods operates in dual-mode, that is, if the request is marked
-// as public it will not check any permission. In these cases, further checks will
-// be done inside the core service.
+// Note that if an API of the service doesn't require authentication, the request
+// is handled automatically since the AuthMiddleware embeds a service interface.
 type AuthMiddleware struct {
 	Auth auth.Authenticator
-	Next Service
+	Service
 }
 
-func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	return am.Next.ListAllPublic(ctx, filter)
-}
-
+// Perform authentication and check that appropriate listing permissions are present.
 func (am *AuthMiddleware) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
 	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionListGalleries)
 	if err != nil {
 		return nil, filters.Meta{}, err
 	}
-	return am.Next.ListAllOwned(ctx, filter)
+	return am.Service.ListAllOwned(ctx, filter)
 }
 
+// Perform authentication and check that appropriate get permissions are present.
 func (am *AuthMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
 	if !public {
 		_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionListGalleries)
@@ -43,9 +37,10 @@ func (am *AuthMiddleware) Get(ctx context.Context, public bool, galleryID int64)
 			return store.Gallery{}, err
 		}
 	}
-	return am.Next.Get(ctx, public, galleryID)
+	return am.Service.Get(ctx, public, galleryID)
 }
 
+// Perform authentication and check that appropriate download permissions are present.
 func (am *AuthMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	if !public {
 		_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionDownloadGallery)
@@ -53,29 +48,32 @@ func (am *AuthMiddleware) Download(ctx context.Context, public bool, galleryID i
 			return store.Gallery{}, nil, err
 		}
 	}
-	return am.Next.Download(ctx, public, galleryID)
+	return am.Service.Download(ctx, public, galleryID)
 }
 
+// Perform authentication and check that appropriate insert permissions are present.
 func (am *AuthMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
 	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionCreateGallery)
 	if err != nil {
 		return store.Gallery{}, err
 	}
-	return am.Next.Insert(ctx, gallery)
+	return am.Service.Insert(ctx, gallery)
 }
 
+// Perform authentication and check that appropriate update permissions are present.
 func (am *AuthMiddleware) Update(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
 	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionUpdateGallery)
 	if err != nil {
 		return store.Gallery{}, err
 	}
-	return am.Next.Update(ctx, gallery)
+	return am.Service.Update(ctx, gallery)
 }
 
+// Perform authentication and check that appropriate delete permissions are present.
 func (am *AuthMiddleware) Delete(ctx context.Context, galleryID int64) error {
 	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionDeleteGallery)
 	if err != nil {
 		return err
 	}
-	return am.Next.Delete(ctx, galleryID)
+	return am.Service.Delete(ctx, galleryID)
 }

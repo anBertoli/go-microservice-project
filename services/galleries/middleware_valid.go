@@ -2,7 +2,6 @@ package galleries
 
 import (
 	"context"
-	"io"
 
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
@@ -13,7 +12,7 @@ import (
 // some pieces of needed information are missing or malformed. The middleware makes
 // sure the next service in the chain will receive valid data.
 type ValidationMiddleware struct {
-	Next Service
+	Service
 }
 
 func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
@@ -23,7 +22,7 @@ func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filter
 		v.AddError("pagination", err.Error())
 		return nil, filters.Meta{}, v
 	}
-	return vm.Next.ListAllPublic(ctx, filter)
+	return vm.Service.ListAllPublic(ctx, filter)
 }
 
 func (vm *ValidationMiddleware) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
@@ -33,15 +32,7 @@ func (vm *ValidationMiddleware) ListAllOwned(ctx context.Context, filter filters
 		v.AddError("pagination", err.Error())
 		return nil, filters.Meta{}, v
 	}
-	return vm.Next.ListAllOwned(ctx, filter)
-}
-
-func (vm *ValidationMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
-	return vm.Next.Get(ctx, public, galleryID)
-}
-
-func (vm *ValidationMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return vm.Next.Download(ctx, public, galleryID)
+	return vm.Service.ListAllOwned(ctx, filter)
 }
 
 func (vm *ValidationMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
@@ -50,7 +41,7 @@ func (vm *ValidationMiddleware) Insert(ctx context.Context, gallery store.Galler
 	if !v.Ok() {
 		return store.Gallery{}, v
 	}
-	return vm.Next.Insert(ctx, gallery)
+	return vm.Service.Insert(ctx, gallery)
 }
 
 func (vm *ValidationMiddleware) Update(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
@@ -59,9 +50,5 @@ func (vm *ValidationMiddleware) Update(ctx context.Context, gallery store.Galler
 	if !v.Ok() {
 		return store.Gallery{}, v
 	}
-	return vm.Next.Update(ctx, gallery)
-}
-
-func (vm *ValidationMiddleware) Delete(ctx context.Context, galleryID int64) error {
-	return vm.Next.Delete(ctx, galleryID)
+	return vm.Service.Update(ctx, gallery)
 }

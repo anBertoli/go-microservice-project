@@ -2,37 +2,21 @@ package galleries
 
 import (
 	"context"
-	"io"
 
 	"github.com/anBertoli/snap-vault/pkg/auth"
-	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-// The StatsMiddleware updates the user stats about the number of galleries.
+// The StatsMiddleware updates the user stats about the number of galleries. Some methods
+// are no-ops since they don't need to modify the stats of a user (the calls are handled
+// directly from the embedded Service interface).
 type StatsMiddleware struct {
 	Store store.StatsStore
-	Next  Service
-}
-
-func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	return sm.Next.ListAllPublic(ctx, filter)
-}
-
-func (sm *StatsMiddleware) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	return sm.Next.ListAllOwned(ctx, filter)
-}
-
-func (sm *StatsMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
-	return sm.Next.Get(ctx, public, galleryID)
-}
-
-func (sm *StatsMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	return sm.Next.Download(ctx, public, galleryID)
+	Service
 }
 
 func (sm *StatsMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	gallery, err := sm.Next.Insert(ctx, gallery)
+	gallery, err := sm.Service.Insert(ctx, gallery)
 	if err != nil {
 		return gallery, err
 	}
@@ -44,14 +28,10 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, gallery store.Gallery) (s
 	return gallery, nil
 }
 
-func (sm *StatsMiddleware) Update(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	return sm.Next.Update(ctx, gallery)
-}
-
 func (sm *StatsMiddleware) Delete(ctx context.Context, galleryID int64) error {
 	authData := auth.MustContextGetAuth(ctx)
 
-	err := sm.Next.Delete(ctx, galleryID)
+	err := sm.Service.Delete(ctx, galleryID)
 	if err != nil {
 		return err
 	}

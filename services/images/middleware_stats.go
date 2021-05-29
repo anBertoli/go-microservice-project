@@ -5,33 +5,17 @@ import (
 	"io"
 
 	"github.com/anBertoli/snap-vault/pkg/auth"
-	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
 // The StatsMiddleware updates the user stats about the number of images and the total
 // stored bytes of a user. Additionally it check if the user has exceeded the space
-// it can use to store data.
+// it can use to store data. Some methods are no-ops since they don't need to modify
+// the stats of a user (the calls are handled directly from the embedded Service interface).
 type StatsMiddleware struct {
-	Next     Service
 	Store    store.StatsStore
 	MaxBytes int64
-}
-
-func (sm *StatsMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	return sm.Next.ListAllPublic(ctx, filter)
-}
-
-func (sm *StatsMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
-	return sm.Next.ListForGallery(ctx, public, galleryID, filter)
-}
-
-func (sm *StatsMiddleware) Get(ctx context.Context, public bool, imageID int64) (store.Image, error) {
-	return sm.Next.Get(ctx, public, imageID)
-}
-
-func (sm *StatsMiddleware) Download(ctx context.Context, public bool, imageID int64) (store.Image, io.ReadCloser, error) {
-	return sm.Next.Download(ctx, public, imageID)
+	Service
 }
 
 func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
@@ -49,7 +33,7 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image s
 	}
 
 	// Insert the image, then increment related counters for the user.
-	image, err = sm.Next.Insert(ctx, reader, image)
+	image, err = sm.Service.Insert(ctx, reader, image)
 	if err != nil {
 		return image, err
 	}
@@ -65,12 +49,8 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image s
 	return image, nil
 }
 
-func (sm *StatsMiddleware) Update(ctx context.Context, image store.Image) (store.Image, error) {
-	return sm.Next.Update(ctx, image)
-}
-
 func (sm *StatsMiddleware) Delete(ctx context.Context, imageID int64) (store.Image, error) {
-	image, err := sm.Next.Delete(ctx, imageID)
+	image, err := sm.Service.Delete(ctx, imageID)
 	if err != nil {
 		return image, err
 	}

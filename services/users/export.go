@@ -3,7 +3,6 @@ package users
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/store"
@@ -26,13 +25,9 @@ type Service interface {
 	GetStats(ctx context.Context) (store.Stats, error)
 }
 
-type KeysList struct {
-	AuthKeyID   int64             `json:"auth_key_id"`
-	CreatedAt   time.Time         `json:"created_at"`
-	Permissions store.Permissions `json:"permissions"`
-}
-
-var ErrMainKeysEdit = errors.New("main keys not editable")
+var (
+	ErrMainKeysEdit = errors.New("main keys not editable")
+)
 
 // This checks makes sure that all service implementation remain
 // valid while we refactor our code.
