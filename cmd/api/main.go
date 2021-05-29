@@ -43,20 +43,20 @@ func main() {
 
 	var usersService users.Service
 	usersService = &users.UsersService{Store: storage}
-	usersService = &users.ValidationMiddleware{Next: usersService}
-	usersService = &users.AuthMiddleware{Next: usersService, Auth: authenticator}
+	usersService = &users.ValidationMiddleware{Service: usersService}
+	usersService = &users.AuthMiddleware{Service: usersService, Auth: authenticator}
 
 	var galleriesService galleries.Service
 	galleriesService = galleries.NewGalleriesService(storage, logger, 20)
-	galleriesService = &galleries.StatsMiddleware{Store: storage.Stats, Next: galleriesService}
-	galleriesService = &galleries.ValidationMiddleware{Next: galleriesService}
-	galleriesService = &galleries.AuthMiddleware{Next: galleriesService, Auth: authenticator}
+	galleriesService = &galleries.StatsMiddleware{Store: storage.Stats, Service: galleriesService}
+	galleriesService = &galleries.ValidationMiddleware{Service: galleriesService}
+	galleriesService = &galleries.AuthMiddleware{Service: galleriesService, Auth: authenticator}
 
 	var imagesService images.Service
 	imagesService = &images.ImagesService{Store: storage}
-	imagesService = &images.StatsMiddleware{Store: storage.Stats, Next: imagesService, MaxBytes: cfg.Storage.MaxSpace}
-	imagesService = &images.ValidationMiddleware{Next: imagesService}
-	imagesService = &images.AuthMiddleware{Next: imagesService, Auth: authenticator}
+	imagesService = &images.StatsMiddleware{Store: storage.Stats, Service: imagesService, MaxBytes: cfg.Storage.MaxSpace}
+	imagesService = &images.ValidationMiddleware{Service: imagesService}
+	imagesService = &images.AuthMiddleware{Service: imagesService, Auth: authenticator}
 
 	mailer := mailer.New(cfg.Smtp.Host, cfg.Smtp.Port, cfg.Smtp.Username, cfg.Smtp.Password, cfg.Smtp.Sender)
 
