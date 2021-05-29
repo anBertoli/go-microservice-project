@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
@@ -34,9 +35,9 @@ func (sm *StatsMiddleware) Download(ctx context.Context, public bool, imageID in
 }
 
 func (sm *StatsMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
-	stats, err := sm.Store.GetForUser(auth.User.ID)
+	stats, err := sm.Store.GetForUser(authData.User.ID)
 	if err != nil {
 		return store.Image{}, err
 	}

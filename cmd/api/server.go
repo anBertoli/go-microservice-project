@@ -15,7 +15,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anBertoli/snap-vault/pkg/mailer"
-	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/services/galleries"
 	"github.com/anBertoli/snap-vault/services/images"
 	"github.com/anBertoli/snap-vault/services/users"
@@ -28,7 +27,6 @@ type application struct {
 	images    images.Service
 	galleries galleries.Service
 	mailer    mailer.Mailer
-	store     store.Store
 	logger    *zap.SugaredLogger
 	bgTasks   sync.WaitGroup
 	config    config
@@ -80,7 +78,7 @@ func (app *application) handler() http.Handler {
 	// middleware should be triggered before the rate limiting one. This because we want to
 	// avoid the circumstance of a pre-flight request allowed and a 'real' request blocked
 	// due to the rate limiting threshold reached.
-	handler := app.authenticate(router)
+	handler := app.extractKey(router)
 	handler = app.rateLimit(handler)
 	handler = app.enableCORS(handler)
 	handler = app.logging(handler)

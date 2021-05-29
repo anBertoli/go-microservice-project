@@ -11,6 +11,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/pkg/tracing"
@@ -42,7 +43,7 @@ func (gs *GalleriesService) ListAllPublic(ctx context.Context, filter filters.In
 
 // Returns a filtered and paginated list of galleries owned by the authenticated user.
 func (gs *GalleriesService) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	authData := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 	galleries, metadata, err := gs.store.Galleries.GetAllForUser(authData.User.ID, filter)
 	if err != nil {
 		return nil, filters.Meta{}, err
@@ -52,7 +53,6 @@ func (gs *GalleriesService) ListAllOwned(ctx context.Context, filter filters.Inp
 
 // Fetch the gallery data, the request could be public or authenticated.
 func (gs *GalleriesService) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
-	authData := store.ContextGetAuth(ctx)
 
 	gallery, err := gs.store.Galleries.Get(galleryID)
 	if err != nil {
@@ -67,6 +67,10 @@ func (gs *GalleriesService) Get(ctx context.Context, public bool, galleryID int6
 			return store.Gallery{}, store.ErrForbidden
 		}
 	} else {
+		authData, err := auth.ContextGetAuth(ctx)
+		if err != nil {
+			return store.Gallery{}, err
+		}
 		if authData.User.ID != gallery.UserID {
 			return store.Gallery{}, store.ErrForbidden
 		}
@@ -78,7 +82,6 @@ func (gs *GalleriesService) Get(ctx context.Context, public bool, galleryID int6
 // Download all gallery images as a compressed tar archive (tar.gz), the request could
 // be public or authenticated.
 func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
-	authData := store.ContextGetAuth(ctx)
 
 	gallery, err := gs.store.Galleries.Get(galleryID)
 	if err != nil {
@@ -93,6 +96,10 @@ func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID
 			return store.Gallery{}, nil, store.ErrForbidden
 		}
 	} else {
+		authData, err := auth.ContextGetAuth(ctx)
+		if err != nil {
+			return store.Gallery{}, nil, err
+		}
 		if authData.User.ID != gallery.UserID {
 			return store.Gallery{}, nil, store.ErrForbidden
 		}
@@ -144,7 +151,7 @@ func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID
 
 // Create a new gallery with the provided data, owned by the authenticated user.
 func (gs *GalleriesService) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	authData := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	gallery, err := gs.store.Galleries.Insert(store.Gallery{
 		UserID:      authData.User.ID,
@@ -161,7 +168,7 @@ func (gs *GalleriesService) Insert(ctx context.Context, gallery store.Gallery) (
 // Updates an existing gallery with the data provided, the gallery must be owned
 // by the authenticated user.
 func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	authData := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	galleryToUpdate, err := gs.store.Galleries.Get(gallery.ID)
 	if err != nil {
@@ -178,6 +185,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 		Title:       gallery.Title,
 		Description: gallery.Description,
 		Published:   gallery.Published,
+		UserID:      authData.UserID,
 	})
 	if err != nil {
 		switch {
@@ -196,7 +204,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 // Delete a gallery and all related images. The authenticated user must be
 // the owner of the gallery.
 func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
-	authData := store.MustContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	galleryToDelete, err := gs.store.Galleries.Get(galleryID)
 	if err != nil {

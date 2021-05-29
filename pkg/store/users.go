@@ -21,25 +21,19 @@ type User struct {
 	Version      int       `db:"version" json:"-"`
 }
 
+// The store abstraction to manipulate users into our postgres database.
+// It holds a DB connection pool.
 type UsersStore struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
-func NewUsersStore(db *sqlx.DB) UsersStore {
-	return UsersStore{
-		db: db,
-	}
-}
-
+// Retrieve a user from its email.
 func (us *UsersStore) GetForEmail(email string) (User, error) {
 	var user User
-
-	// Execute the query, scanning the return values into a User struct. If no matching
-	// record is found we return an ErrRecordNotFound error.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := us.db.GetContext(ctx, &user, `SELECT * FROM users WHERE email = $1`, email)
+	err := us.DB.GetContext(ctx, &user, `SELECT * FROM users WHERE email = $1`, email)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -52,18 +46,19 @@ func (us *UsersStore) GetForEmail(email string) (User, error) {
 	return user, nil
 }
 
+// Retrieve a user from one of its auth keys. The provided key argument is
+// the plain text version of the auth key, and it's hashed to search the
+// user into the database.
 func (us *UsersStore) GetForKey(key string) (User, error) {
 	var (
 		user    User
 		keyHash = hashString(key)
 	)
 
-	// Execute the query, scanning the return values into a User struct. If no matching
-	// record is found we return an ErrRecordNotFound error.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := us.db.GetContext(ctx, &user, `
+	err := us.DB.GetContext(ctx, &user, `
 		SELECT users.id, users.created_at, users.updated_at, users.name, users.email, users.password_hash, users.activated, users.version FROM users
 		INNER JOIN auth_keys ON auth_keys.user_id = users.id
 		WHERE auth_keys.auth_key_hash = $1
@@ -81,22 +76,16 @@ func (us *UsersStore) GetForKey(key string) (User, error) {
 	return user, nil
 }
 
+// Retrieve the user that has the associated token. Both the token hash and the
+// token scope must match. The token argument is the plain text version.
+// The token must not be expired.
 func (us *UsersStore) GetForToken(tokenScope, tokenPlain string) (User, error) {
-	// Calculate the SHA-256 hash of the plaintext token provided by the client.
 	tokenHash := hashString(tokenPlain)
-
-	// Create a slice containing the query arguments. Notice how we use the [:] operator
-	// to get a slice containing the token hash, rather than passing in the array (which
-	// is not supported by the pq driver), and that we pass the current time as the
-	// value to check against the token expiry.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Execute the query, scanning the return values into a User struct. If no matching
-	// record is found we return an ErrRecordNotFound error.
 	var user User
-
-	err := us.db.GetContext(ctx, &user, `
+	err := us.DB.GetContext(ctx, &user, `
 		SELECT users.id, users.created_at, users.updated_at, users.name, users.email, users.password_hash, users.activated, users.version FROM users
 		INNER JOIN tokens ON users.id = tokens.user_id
 		WHERE tokens.hash = $1
@@ -116,12 +105,14 @@ func (us *UsersStore) GetForToken(tokenScope, tokenPlain string) (User, error) {
 	return user, nil
 }
 
+// Create a new user into the database. The password is hashed before inserting it into
+// the db. Note that some values are populated directly by the db.
 func (us *UsersStore) Insert(user User) (User, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := us.db.GetContext(ctx, &user, `
+	err := us.DB.GetContext(ctx, &user, `
 		INSERT INTO users (name, email, password_hash, activated) VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, updated_at, version
 	`, user.Name, user.Email, user.PasswordHash, user.Activated)
@@ -137,18 +128,20 @@ func (us *UsersStore) Insert(user User) (User, error) {
 	return user, nil
 }
 
+// Update an existing user. The new data is provided in the passed in User struct.
 func (us *UsersStore) Update(user User) (User, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := us.db.GetContext(ctx, &user, ` 
+	err := us.DB.GetContext(ctx, &user, ` 
 		UPDATE users
-		SET name = $1, email = $2, password_hash = $3, activated = $4, updated_at = $5, version = version + 1 WHERE id = $6 AND version = $7
+		SET name = $1, email = $2, password_hash = $3, activated = $4, updated_at = now(), version = version + 1 WHERE id = $5 AND version = $6
 		RETURNING version, updated_at
-	`, user.Name, user.Email, user.PasswordHash, user.Activated, time.Now().UTC(), user.ID, user.Version)
+	`, user.Name, user.Email, user.PasswordHash, user.Activated, user.ID, user.Version)
 	if err != nil {
 		switch {
+		// We can detect if a user with the same email already exists in our DB.
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
 			return User{}, ErrDuplicateEmail
 		case errors.Is(err, sql.ErrNoRows):

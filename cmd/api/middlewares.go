@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"net"
 	"net/http"
 	"strings"
@@ -10,14 +9,15 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/anBertoli/snap-vault/pkg/store"
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/tracing"
 )
 
-// The authenticate middleware extracts the authentication key from the request
-// 'Authorization" header and tries to authenticate the request. Successful
-// auth data will be put in the request context.
-func (app *application) authenticate(next http.Handler) http.Handler {
+// The extractKey middleware extracts the authentication key from the request 'Authorization"
+// header and put it into the request context. The logic here is not to authenticate the user,
+// but to provide transport-specific data extraction. The authentication is business logic
+// and this will be handled by an internal service.
+func (app *application) extractKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Add the "Vary: Authorization" header to the response. This indicates to any
@@ -45,44 +45,9 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 
 		plainKey := headerParts[1]
 
-		// Retrieve the details of the user associated with the authentication key,
-		// along with the key being used and all the related permissions. If auth
-		// fails we return a 401 response (unauthorized).
-		user, err := app.store.Users.GetForKey(plainKey)
-		if err != nil {
-			switch {
-			case errors.Is(err, store.ErrRecordNotFound):
-				app.invalidAuthenticationTokenResponse(w, r)
-			default:
-				app.serverErrorResponse(w, r, err)
-			}
-			return
-		}
-
-		keys, err := app.store.Keys.GetForPlainKey(plainKey)
-		if err != nil {
-			switch {
-			case errors.Is(err, store.ErrRecordNotFound):
-				app.invalidAuthenticationTokenResponse(w, r)
-			default:
-				app.serverErrorResponse(w, r, err)
-			}
-			return
-		}
-
-		permissions, err := app.store.Permissions.GetAllForKey(plainKey, false)
-		if err != nil {
-			app.serverErrorResponse(w, r, err)
-			return
-		}
-
-		// Add the user information to the request context. This information will flow into
+		// Add the auth key information to the request context. This information will flow into
 		// the next HTTP handlers and in each internal service that will receive the context.
-		r = r.WithContext(store.ContextSetAuth(r.Context(), &store.Auth{
-			User:        user,
-			Keys:        keys,
-			Permissions: permissions,
-		}))
+		r = r.WithContext(auth.ContextSetKey(r.Context(), plainKey))
 
 		// Proceed with next handler in the chain.
 		next.ServeHTTP(w, r)

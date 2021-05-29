@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/pkg/validator"
 )
@@ -78,6 +79,10 @@ func (vm *ValidationMiddleware) EditUserKey(ctx context.Context, keyID int64, pe
 
 func (vm *ValidationMiddleware) DeleteUserKey(ctx context.Context, keyID int64) error {
 	return vm.Next.DeleteUserKey(ctx, keyID)
+}
+
+func (vm *ValidationMiddleware) GetMe(ctx context.Context) (auth.Auth, error) {
+	return vm.Next.GetMe(ctx)
 }
 
 func (vm *ValidationMiddleware) GetStats(ctx context.Context) (store.Stats, error) {

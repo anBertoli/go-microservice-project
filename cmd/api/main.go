@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/mailer"
 	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/services/galleries"
@@ -38,23 +39,24 @@ func main() {
 	if err != nil {
 		logger.Fatalw("creating storage", "err", err)
 	}
+	authenticator := auth.Authenticator{Store: storage}
 
 	var usersService users.Service
 	usersService = &users.UsersService{Store: storage}
 	usersService = &users.ValidationMiddleware{Next: usersService}
-	usersService = &users.AuthMiddleware{Next: usersService}
+	usersService = &users.AuthMiddleware{Next: usersService, Auth: authenticator}
 
 	var galleriesService galleries.Service
 	galleriesService = galleries.NewGalleriesService(storage, logger, 20)
 	galleriesService = &galleries.StatsMiddleware{Store: storage.Stats, Next: galleriesService}
 	galleriesService = &galleries.ValidationMiddleware{Next: galleriesService}
-	galleriesService = &galleries.AuthMiddleware{Next: galleriesService}
+	galleriesService = &galleries.AuthMiddleware{Next: galleriesService, Auth: authenticator}
 
 	var imagesService images.Service
 	imagesService = &images.ImagesService{Store: storage}
 	imagesService = &images.StatsMiddleware{Store: storage.Stats, Next: imagesService, MaxBytes: cfg.Storage.MaxSpace}
 	imagesService = &images.ValidationMiddleware{Next: imagesService}
-	imagesService = &images.AuthMiddleware{Next: imagesService}
+	imagesService = &images.AuthMiddleware{Next: imagesService, Auth: authenticator}
 
 	mailer := mailer.New(cfg.Smtp.Host, cfg.Smtp.Port, cfg.Smtp.Username, cfg.Smtp.Password, cfg.Smtp.Sender)
 
@@ -63,7 +65,6 @@ func main() {
 		galleries: galleriesService,
 		images:    imagesService,
 		mailer:    mailer,
-		store:     storage,
 		logger:    logger,
 		config:    cfg,
 	}

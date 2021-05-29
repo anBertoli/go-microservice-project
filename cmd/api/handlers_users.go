@@ -2,8 +2,6 @@ package main
 
 import (
 	"net/http"
-
-	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,9 +102,10 @@ func (app *application) recoverKeyHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Request) {
-	authData := store.ContextGetAuth(r.Context())
-	if authData == nil {
-		app.unauthenticatedResponse(w, r)
+
+	authData, err := app.users.GetMe(r.Context())
+	if err != nil {
+		app.encodeError(w, r, err)
 		return
 	}
 

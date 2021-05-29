@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
@@ -21,6 +22,7 @@ type Service interface {
 	EditUserKey(ctx context.Context, keyID int64, permissions store.Permissions) (store.Keys, store.Permissions, error)
 	DeleteUserKey(ctx context.Context, keyID int64) error
 
+	GetMe(ctx context.Context) (auth.Auth, error)
 	GetStats(ctx context.Context) (store.Stats, error)
 }
 

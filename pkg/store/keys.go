@@ -20,16 +20,14 @@ type Keys struct {
 	UserID      int64     `db:"user_id" json:"-"`
 }
 
+// The store abstraction to manipulate user auth keys into the database. It holds a
+// DB connection pool. Only the hashed version of the keys are saved into the db.
 type KeysStore struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
-func NewKeysStore(db *sqlx.DB) KeysStore {
-	return KeysStore{
-		db: db,
-	}
-}
-
+// Creates a new auth key and saves the hash into the database. The plain text version
+// of the key is returned and not viewable/recoverable anymore.
 func (ks *KeysStore) New(userID int64) (Keys, error) {
 	authKey, authKeyHash, err := generateToken()
 	if err != nil {
@@ -47,6 +45,7 @@ func (ks *KeysStore) New(userID int64) (Keys, error) {
 	return keys, nil
 }
 
+// Retrieve auth key data starting from the plain text version of the key.
 func (ks *KeysStore) GetForPlainKey(key string) (Keys, error) {
 	var (
 		keys    Keys
@@ -56,7 +55,7 @@ func (ks *KeysStore) GetForPlainKey(key string) (Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := ks.db.GetContext(ctx, &keys, `
+	err := ks.DB.GetContext(ctx, &keys, `
 		SELECT id, auth_key_hash, created_at, user_id  
 		FROM auth_keys WHERE auth_key_hash = $1
 	`, keyHash)
@@ -72,13 +71,14 @@ func (ks *KeysStore) GetForPlainKey(key string) (Keys, error) {
 	return keys, nil
 }
 
+// Retrieve all auth keys for a specific user.
 func (ks *KeysStore) GetAllForUser(userID int64) ([]Keys, error) {
 	keys := []Keys{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := ks.db.SelectContext(ctx, &keys, `
+	err := ks.DB.SelectContext(ctx, &keys, `
 		SELECT id, auth_key_hash, created_at, user_id  
 		FROM auth_keys WHERE user_id = $1
 	`, userID)
@@ -94,11 +94,12 @@ func (ks *KeysStore) GetAllForUser(userID int64) ([]Keys, error) {
 	return keys, err
 }
 
+// Insert a new auth key into the database. Only the hashed version is saved.
 func (ks *KeysStore) Insert(keys Keys) (Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := ks.db.GetContext(ctx, &keys, `
+	err := ks.DB.GetContext(ctx, &keys, `
 		INSERT INTO auth_keys (auth_key_hash, user_id)
 			VALUES ($1, $2)
 			RETURNING id, created_at
@@ -107,12 +108,12 @@ func (ks *KeysStore) Insert(keys Keys) (Keys, error) {
 	return keys, err
 }
 
+// Delete an auth key specified via the key ID and the owner ID.
 func (ks *KeysStore) DeleteKey(keyID, userID int64) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := ks.db.ExecContext(ctx, `
+	res, err := ks.DB.ExecContext(ctx, `
 		DELETE FROM auth_keys WHERE auth_keys.id = $1 AND auth_keys.user_id = $2
 	`, keyID, userID)
 	if err != nil {
@@ -130,30 +131,19 @@ func (ks *KeysStore) DeleteKey(keyID, userID int64) error {
 }
 
 func generateToken() (string, string, error) {
-	// Use the Read() function from the crypto/rand package to fill the byte slice with
-	// random bytes from your operating system's CSPRNG. This will return an error if
-	// the CSPRNG fails to function correctly.
+	// Use the Read() function from the crypto/rand package to fill the byte slice
+	// with random bytes from your operating system's CSPRNG.
 	randomBytes := make([]byte, 16)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Encode the byte slice to a base-32-encoded string and assign it to the token
-	// Plaintext field. This will be the token string that we send to the user in their
-	// welcome email. They will look similar to this:
-	//
-	// Y3QMGX3PJ3WLRL2YRTQGQ6KRHU
-	//
-	// Note that by default base-32 strings may be padded at the end with the =
-	// character. We don't need this padding character for the purpose of our tokens, so
-	// we use the WithPadding(base32.NoPadding) method in the line below to omit them.
+	// Encode the byte slice to a base-64-encoded string.
 	keyPlain := base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(randomBytes)
 
-	// Generate a SHA-256 hash of the plaintext token string. This will be the value
-	// that we store in the `hash` field of our database table. Note that the
-	// sha256.Sum256() function returns an *array* of length 32, so to make it easier to
-	// work with we convert it to a slice using the [:] operator before storing it.
+	// Generate a SHA-256 hash of the token string. This will be the value
+	// that we store in the `hash` field of our database tables.
 	keyHash := sha256.Sum256([]byte(keyPlain))
 	keyHashStr := base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(keyHash[:])
 	return keyPlain, keyHashStr, nil

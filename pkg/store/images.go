@@ -30,15 +30,27 @@ type Image struct {
 	UserID      int64     `json:"user_id" db:"user_id"`
 }
 
+// The store abstraction to manipulate images into our postgres
+// database and into the file system storage. It holds a DB
+// connection pool.
 type ImagesStore struct {
 	db     *sqlx.DB
 	fsRoot string
 }
 
+// Instantiate a new images store, the constructor is used
+// to check if the provided store path is valid.
 func NewImagesStore(db *sqlx.DB, path string) (ImagesStore, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return ImagesStore{}, err
+	}
+	stat, err := os.Stat(absPath)
+	if err != nil {
+		return ImagesStore{}, err
+	}
+	if !stat.IsDir() {
+		return ImagesStore{}, fmt.Errorf("'%s' is not a dir", path)
 	}
 	return ImagesStore{
 		db:     db,
@@ -46,11 +58,14 @@ func NewImagesStore(db *sqlx.DB, path string) (ImagesStore, error) {
 	}, nil
 }
 
+// Retrieve a specific image data from the database.
 func (is *ImagesStore) Get(imageID int64) (Image, error) {
 	var image Image
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	// Join the galleries and users tables to provide more infos in the
+	// returned image metadata.
 	err := is.db.GetContext(ctx, &image, `
 		SELECT 
 			images.id, images.filepath, images.title, images.size, images.caption, images.content_type, images.created_at, 
@@ -60,16 +75,21 @@ func (is *ImagesStore) Get(imageID int64) (Image, error) {
 			LEFT JOIN users on users.id = galleries.user_id
 		WHERE images.id = $1
 	`, imageID)
-	if err == sql.ErrNoRows {
-		return Image{}, ErrRecordNotFound
-	}
+
 	if err != nil {
-		return Image{}, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return Image{}, ErrRecordNotFound
+		default:
+			return Image{}, err
+		}
 	}
 
 	return image, nil
 }
 
+// Return a read-closer that provides the bytes content of a specifi image. The
+// returned read-closer must be closed by the caller.
 func (is *ImagesStore) GetReader(imageID int64) (io.ReadCloser, error) {
 	var image Image
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -83,13 +103,18 @@ func (is *ImagesStore) GetReader(imageID int64) (io.ReadCloser, error) {
 		LEFT JOIN galleries on images.gallery_id = galleries.id
 		WHERE images.id = $1
 	`, imageID)
-	if err == sql.ErrNoRows {
-		return nil, ErrRecordNotFound
-	}
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
 	}
 
+	// The image was saved into the file system and the relative path of the file
+	// (relative to the 'root' of the store) was saved into the DB. Join the
+	// root and the relative path to find the image path.
 	path, err := filepath.Abs(filepath.Join(is.fsRoot, image.Path))
 	if err != nil {
 		return nil, err
@@ -102,19 +127,22 @@ func (is *ImagesStore) GetReader(imageID int64) (io.ReadCloser, error) {
 	return file, nil
 }
 
+// Obtain a list of public images, that is, images belonging to a public gallery.
+// This operation supports filtering and pagination so the method also returns
+// pagination metadata.
 func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta, error) {
 	var (
 		images   = []Image{}
-		metadata filters.Meta
-		tmp      []struct {
-			Count int64 `db:"count"`
+		metadata = filter.CalculateMetadata(0)
+		// Use a temporary variable to scan also the count.
+		tmp []struct {
+			Count int64 `DB:"count"`
 			Image
 		}
 	)
 
-	// The inclusion of the count(*) OVER() expression at the start
-	// of the query will result in the filtered record count being
-	// included as the first value in each row.
+	// Like in the galleries listing operations we include the count and we eventually
+	// filter the records based on search col field.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -129,38 +157,38 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 		LIMIT $2 OFFSET $3`,
 		filter.SearchCol, filter.Search, filter.SortColumn(), filter.SortDirection(),
 	), filter.Search, filter.Limit(), filter.Offset())
-	if err == sql.ErrNoRows {
-		return nil, filters.Meta{}, ErrRecordNotFound
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, metadata, nil
 	}
 	if err != nil {
 		return nil, metadata, err
 	}
 
+	// Convert the results into a galleries slice, then calculate pagination
+	// metadata.
 	for _, i := range tmp {
 		images = append(images, i.Image)
 	}
 	if len(tmp) > 0 {
 		metadata = filter.CalculateMetadata(tmp[0].Count)
-	} else {
-		metadata = filter.CalculateMetadata(0)
 	}
 
 	return images, metadata, nil
 }
 
+// Obtain a list of images belonging to a specific gallery. This operation supports filtering and
+// pagination so the method also returns pagination metadata.
 func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) ([]Image, filters.Meta, error) {
 	var (
-		images = []Image{}
-		meta   filters.Meta
-		tmp    []struct {
-			Count int64 `db:"count"`
+		images   = []Image{}
+		metadata = filter.CalculateMetadata(0)
+		// Use a temporary variable to scan also the count.
+		tmp []struct {
+			Count int64 `DB:"count"`
 			Image
 		}
 	)
 
-	// The inclusion of the count(*) OVER() expression at the start
-	// of the query will result in the filtered record count being
-	// included as the first value in each row.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -176,53 +204,66 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 		LIMIT $3 OFFSET $4`,
 		filter.SearchCol, filter.Search, filter.SortColumn(), filter.SortDirection(),
 	), filter.Search, galleryID, filter.Limit(), filter.Offset())
-	if err == sql.ErrNoRows {
-		return nil, meta, ErrRecordNotFound
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, metadata, nil
 	}
 	if err != nil {
-		return nil, meta, err
+		return nil, metadata, err
 	}
 
 	for _, i := range tmp {
 		images = append(images, i.Image)
 	}
-
 	if len(tmp) > 0 {
-		meta = filter.CalculateMetadata(tmp[0].Count)
-	} else {
-		meta = filter.CalculateMetadata(0)
+		metadata = filter.CalculateMetadata(tmp[0].Count)
 	}
 
-	return images, meta, nil
+	return images, metadata, nil
 }
 
+// Inserts a new image for a specific gallery into the database and save the image bytes
+// into the file system. The image struct passed in must contain the necessary information,
+// but note that id, created_at and updated_at are set automatically by the database.
 func (is *ImagesStore) Insert(r io.Reader, image Image) (Image, error) {
-	relPath := filepath.Join(
-		fmt.Sprintf("gallery_%d", image.GalleryID),
-		fmt.Sprintf("%s_%s", image.Title, randString(15)),
+	var (
+		imageSize int64
+		relPath   string
 	)
-	path, err := filepath.Abs(filepath.Join(is.fsRoot, relPath))
-	if err != nil {
-		return Image{}, err
-	}
-	n, err := is.writeImage(r, path)
-	if err != nil {
-		return Image{}, err
+
+	// Compute the path where the image will be saved, using a random string.
+	// If a name collision occur, retry again with a different random string.
+	for {
+		relPath = filepath.Join(
+			fmt.Sprintf("gallery_%d", image.GalleryID),
+			fmt.Sprintf("%s_%s", image.Title, randString(25)),
+		)
+		path, err := filepath.Abs(filepath.Join(is.fsRoot, relPath))
+		if err != nil {
+			return Image{}, err
+		}
+		imageSize, err = is.writeImage(r, path)
+		if errors.Is(err, ErrFileAlreadyExists) {
+			continue
+		}
+		if err != nil {
+			return Image{}, err
+		}
+		break
 	}
 
+	// Update relevant image fields.
 	image.Path = relPath
-	image.Size = n
+	image.Size = imageSize
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	now := time.Now().UTC()
-	err = is.db.GetContext(ctx, &image, `
+	err := is.db.GetContext(ctx, &image, `
 		INSERT
 			INTO images (filepath, title, caption, created_at, updated_at, size, content_type, gallery_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+			VALUES ($1, $2, $3, now(), now(), $4, $5, $6) 
 			RETURNING id, created_at, updated_at
-	`, image.Path, image.Title, image.Caption, now, now, n, image.ContentType, image.GalleryID)
+	`, image.Path, image.Title, image.Caption, imageSize, image.ContentType, image.GalleryID)
 	if err != nil {
 		return Image{}, err
 	}
@@ -230,6 +271,8 @@ func (is *ImagesStore) Insert(r io.Reader, image Image) (Image, error) {
 	return image, nil
 }
 
+// Helper func used to write an image into the file system store. The file is
+// created with O_EXCL mode, that is, it must not exist.
 func (is *ImagesStore) writeImage(r io.Reader, path string) (int64, error) {
 	err := os.MkdirAll(filepath.Dir(path), 0755)
 	if err != nil {
@@ -253,6 +296,7 @@ func (is *ImagesStore) writeImage(r io.Reader, path string) (int64, error) {
 	return n, err
 }
 
+// Update metadata into the database about a specific image.
 func (is *ImagesStore) Update(image Image) (Image, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -262,7 +306,7 @@ func (is *ImagesStore) Update(image Image) (Image, error) {
 		WHERE id = $4
 		RETURNING updated_at
 	`, image.Title, image.Caption, time.Now().UTC(), image.ID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Image{}, ErrRecordNotFound
 	}
 	if err != nil {
@@ -272,6 +316,7 @@ func (is *ImagesStore) Update(image Image) (Image, error) {
 	return image, nil
 }
 
+// Delete the specified image both from the gallery and from the store.
 func (is *ImagesStore) Delete(imageID int64) error {
 	var image Image
 
@@ -288,6 +333,7 @@ func (is *ImagesStore) Delete(imageID int64) error {
 		}
 	}
 
+	// Delete the image from the file system.
 	path, err := filepath.Abs(filepath.Join(is.fsRoot, image.Path))
 	if err != nil {
 		return err
@@ -297,6 +343,7 @@ func (is *ImagesStore) Delete(imageID int64) error {
 		return err
 	}
 
+	// Delete the image metadata from the database.
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	res, err := is.db.ExecContext(ctx, `DELETE FROM images WHERE id = $1`, imageID)
@@ -308,16 +355,17 @@ func (is *ImagesStore) Delete(imageID int64) error {
 		return err
 	}
 	if n == 0 {
-		return ErrRecordNotFound
+		return ErrEditConflict
 	}
 
 	return nil
 }
 
-func randString(n int) string {
+// Generates a random string.
+func randString(length int) string {
 	runes := []rune("123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]rune, n)
+	b := make([]rune, length)
 	for i := range b {
 		b[i] = runes[r.Intn(len(runes))]
 	}

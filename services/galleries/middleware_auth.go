@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
@@ -19,6 +20,7 @@ import (
 // as public it will not check any permission. In these cases, further checks will
 // be done inside the core service.
 type AuthMiddleware struct {
+	Auth auth.Authenticator
 	Next Service
 }
 
@@ -27,7 +29,7 @@ func (am *AuthMiddleware) ListAllPublic(ctx context.Context, filter filters.Inpu
 }
 
 func (am *AuthMiddleware) ListAllOwned(ctx context.Context, filter filters.Input) ([]store.Gallery, filters.Meta, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListGalleries)
+	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionListGalleries)
 	if err != nil {
 		return nil, filters.Meta{}, err
 	}
@@ -36,7 +38,7 @@ func (am *AuthMiddleware) ListAllOwned(ctx context.Context, filter filters.Input
 
 func (am *AuthMiddleware) Get(ctx context.Context, public bool, galleryID int64) (store.Gallery, error) {
 	if !public {
-		_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionListGalleries)
+		_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionListGalleries)
 		if err != nil {
 			return store.Gallery{}, err
 		}
@@ -46,7 +48,7 @@ func (am *AuthMiddleware) Get(ctx context.Context, public bool, galleryID int64)
 
 func (am *AuthMiddleware) Download(ctx context.Context, public bool, galleryID int64) (store.Gallery, io.ReadCloser, error) {
 	if !public {
-		_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDownloadGallery)
+		_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionDownloadGallery)
 		if err != nil {
 			return store.Gallery{}, nil, err
 		}
@@ -55,7 +57,7 @@ func (am *AuthMiddleware) Download(ctx context.Context, public bool, galleryID i
 }
 
 func (am *AuthMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionCreateGallery)
+	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionCreateGallery)
 	if err != nil {
 		return store.Gallery{}, err
 	}
@@ -63,7 +65,7 @@ func (am *AuthMiddleware) Insert(ctx context.Context, gallery store.Gallery) (st
 }
 
 func (am *AuthMiddleware) Update(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionUpdateGallery)
+	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionUpdateGallery)
 	if err != nil {
 		return store.Gallery{}, err
 	}
@@ -71,7 +73,7 @@ func (am *AuthMiddleware) Update(ctx context.Context, gallery store.Gallery) (st
 }
 
 func (am *AuthMiddleware) Delete(ctx context.Context, galleryID int64) error {
-	_, err := store.RequireUserPermissions(ctx, store.PermissionMain, store.PermissionDeleteGallery)
+	_, err := am.Auth.RequireUserPermissions(&ctx, store.PermissionMain, store.PermissionDeleteGallery)
 	if err != nil {
 		return err
 	}

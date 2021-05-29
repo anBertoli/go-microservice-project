@@ -18,22 +18,19 @@ type Stats struct {
 	Version   int       `db:"version" json:"-"`
 }
 
+// The store abstraction to manipulate permissions into the database. It holds a
+// DB connection pool.
 type StatsStore struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
-func NewStatsStore(db *sqlx.DB) StatsStore {
-	return StatsStore{
-		db: db,
-	}
-}
-
+// Retrieve statistics about a specific user.
 func (ss *StatsStore) GetForUser(userID int64) (Stats, error) {
 	var stats Stats
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := ss.db.GetContext(ctx, &stats, `SELECT * FROM stats WHERE user_id = $1`, userID)
+	err := ss.DB.GetContext(ctx, &stats, `SELECT * FROM stats WHERE user_id = $1`, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -46,11 +43,12 @@ func (ss *StatsStore) GetForUser(userID int64) (Stats, error) {
 	return stats, nil
 }
 
-func (ss *StatsStore) InsertForUser(userID int64) error {
+// Initialize a statistics row into the database for a specific user.
+func (ss *StatsStore) InitStatsForUser(userID int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err := ss.db.ExecContext(ctx, `
+	_, err := ss.DB.ExecContext(ctx, `
 		INSERT INTO stats (n_galleries, n_images, n_bytes, user_id, updated_at)
 		VALUES (0, 0, 0, $1, $2)
 	`, userID, time.Now().UTC())
@@ -58,6 +56,7 @@ func (ss *StatsStore) InsertForUser(userID int64) error {
 	return err
 }
 
+// Increment the images counter statistic for a specific user.
 func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -67,7 +66,7 @@ func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := ss.db.ExecContext(ctx, ` 
+	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_images = n_images + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
 		RETURNING version, updated_at
@@ -86,6 +85,7 @@ func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	return nil
 }
 
+// Increment the space used statistic (in bytes) for a specific user.
 func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -95,7 +95,7 @@ func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := ss.db.ExecContext(ctx, ` 
+	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_bytes = n_bytes + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
 		RETURNING version, updated_at
@@ -114,6 +114,7 @@ func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	return nil
 }
 
+// Increment the galleries counter statistic for a specific user.
 func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 	stats, err := ss.GetForUser(userID)
 	if err != nil {
@@ -123,7 +124,7 @@ func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := ss.db.ExecContext(ctx, ` 
+	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_galleries = n_galleries + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
 		RETURNING version, updated_at

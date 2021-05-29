@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -23,20 +22,14 @@ func New(db *sqlx.DB, storeRoot string) (Store, error) {
 		return Store{}, err
 	}
 	return Store{
-		Users:       NewUsersStore(db),
-		Keys:        NewKeysStore(db),
-		Permissions: NewPermissionsStore(db),
-		Tokens:      NewTokensStore(db),
-		Galleries:   NewGalleriesStore(db),
+		Users:       UsersStore{db},
+		Keys:        KeysStore{db},
+		Permissions: PermissionsStore{db},
+		Tokens:      TokenStore{db},
+		Galleries:   GalleriesStore{db},
 		Images:      imagesStore,
-		Stats:       NewStatsStore(db),
+		Stats:       StatsStore{db},
 	}, nil
-}
-
-type Auth struct {
-	User
-	Keys
-	Permissions
 }
 
 var (
@@ -46,62 +39,4 @@ var (
 	ErrFileAlreadyExists = errors.New("file already exists")
 	ErrEmptyBytes        = errors.New("no bytes")
 	ErrForbidden         = errors.New("forbidden")
-	ErrUnauthenticated   = errors.New("unauthenticated")
-	ErrNotActivated      = errors.New("user not activated")
-	ErrNoPermission      = errors.New("wrong permissions")
 )
-
-type privateKey string
-
-const authDataContextKey privateKey = "auth_data"
-
-func ContextSetAuth(ctx context.Context, auth *Auth) context.Context {
-	childCtx := context.WithValue(ctx, authDataContextKey, auth)
-	return childCtx
-}
-
-func ContextGetAuth(ctx context.Context) *Auth {
-	authData, ok := ctx.Value(authDataContextKey).(*Auth)
-	if !ok {
-		return nil
-	}
-	return authData
-}
-
-func MustContextGetAuth(ctx context.Context) Auth {
-	authData, ok := ctx.Value(authDataContextKey).(*Auth)
-	if !ok {
-		panic("cannot retrieve auth data from context")
-	}
-	return *authData
-}
-
-func RequireAuthenticatedUser(ctx context.Context) (*Auth, error) {
-	auth := ContextGetAuth(ctx)
-	if auth == nil {
-		return nil, ErrUnauthenticated
-	}
-	return auth, nil
-}
-
-func RequireActivatedUser(ctx context.Context) (*Auth, error) {
-	auth, err := RequireAuthenticatedUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !auth.User.Activated {
-		return nil, ErrNotActivated
-	}
-	return auth, nil
-}
-
-func RequireUserPermissions(ctx context.Context, permissions ...string) (*Auth, error) {
-	auth, err := RequireActivatedUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !auth.Permissions.Include(permissions...) {
-		return nil, ErrNoPermission
-	}
-	return auth, nil
-}

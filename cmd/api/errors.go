@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/pkg/validator"
 	"github.com/anBertoli/snap-vault/services/galleries"
@@ -19,6 +20,14 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 	case errors.As(err, &v):
 		app.failedValidationResponse(w, r, v)
 
+	// auth errors
+	case errors.Is(err, auth.ErrUnauthenticated):
+		app.unauthenticatedResponse(w, r)
+	case errors.Is(err, auth.ErrNotActivated):
+		app.inactiveAccountResponse(w, r)
+	case errors.Is(err, auth.ErrNoPermission):
+		app.wrongPermissionsResponse(w, r)
+
 	// store errors
 	case errors.Is(err, store.ErrDuplicateEmail):
 		app.emailTakenResponse(w, r)
@@ -26,14 +35,8 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 		app.notFoundResponse(w, r)
 	case errors.Is(err, store.ErrEditConflict):
 		app.editConflictResponse(w, r)
-	case errors.Is(err, store.ErrUnauthenticated):
-		app.unauthenticatedResponse(w, r)
 	case errors.Is(err, store.ErrForbidden):
 		app.forbiddenResponse(w, r)
-	case errors.Is(err, store.ErrNotActivated):
-		app.inactiveAccountResponse(w, r)
-	case errors.Is(err, store.ErrNoPermission):
-		app.wrongPermissionsResponse(w, r)
 
 	// users service errors
 	case errors.Is(err, users.ErrMainKeysEdit):

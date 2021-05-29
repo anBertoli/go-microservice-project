@@ -22,23 +22,19 @@ type Gallery struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// The store abstraction to manipulate galleries into our postgres database.
+// It holds a DB connection pool.
 type GalleriesStore struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
-func NewGalleriesStore(db *sqlx.DB) GalleriesStore {
-	return GalleriesStore{
-		db: db,
-	}
-}
-
-// Retrieve a specific gallery from the postgres database.
+// Retrieve a specific gallery from the database.
 func (gs *GalleriesStore) Get(id int64) (Gallery, error) {
 	var gallery Gallery
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := gs.db.GetContext(ctx, &gallery, `SELECT * FROM GALLERIES WHERE id = $1`, id)
+	err := gs.DB.GetContext(ctx, &gallery, `SELECT * FROM GALLERIES WHERE id = $1`, id)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -51,34 +47,90 @@ func (gs *GalleriesStore) Get(id int64) (Gallery, error) {
 	return gallery, nil
 }
 
+// Obtain a list of public galleries. This operation supports filtering and pagination
+// so the method also returns pagination metadata.
 func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters.Meta, error) {
 	var (
 		galleries = []Gallery{}
-		pagMeta   filters.Meta
-		tmp       []struct {
+		pagMeta   = filter.CalculateMetadata(0)
+		// Use a tmp variable to scan also the count.
+		tmp []struct {
 			Gallery
-			Count int64 `db:"count"`
+			Count int64 `DB:"count"`
 		}
 	)
 
-	// The inclusion of the count(*) OVER() expression at the start
-	// of the query will result in the filtered record count being
-	// included as the first value in each row.
+	// The inclusion of the count(*) OVER() expression at the start of the query
+	// will result in the filtered record count being included as the first value
+	// in each row.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := gs.db.SelectContext(ctx, &tmp, fmt.Sprintf(`
+	// The query will filter results based on the search col parameter but only if the
+	// value is populated. The filtering is case-insensitive and the filter value
+	// must be a substring of the related record field.
+	query := fmt.Sprintf(`
 		SELECT count(*) OVER(), * FROM galleries
 		WHERE ((LOWER(%s) LIKE LOWER('%%%s%%')) OR ($1 = '')) AND published = true
 		ORDER BY %s %s, id ASC
 		LIMIT $2 OFFSET $3`,
 		filter.SearchCol, filter.Search, filter.SortColumn(), filter.SortDirection(),
-	), filter.Search, filter.Limit(), filter.Offset())
-	if err == sql.ErrNoRows {
-		return nil, pagMeta, ErrRecordNotFound
-	}
+	)
+
+	err := gs.DB.SelectContext(ctx, &tmp, query, filter.Search, filter.Limit(), filter.Offset())
 	if err != nil {
-		return nil, pagMeta, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			// No records is not an error, so simply return an empty slice.
+			return nil, pagMeta, nil
+		default:
+			return nil, pagMeta, err
+		}
+	}
+
+	// Convert the results into a galleries slice, then calculate pagination
+	// metadata.
+	for _, g := range tmp {
+		galleries = append(galleries, g.Gallery)
+	}
+	if len(tmp) > 0 {
+		pagMeta = filter.CalculateMetadata(tmp[0].Count)
+	}
+
+	return galleries, pagMeta, nil
+}
+
+// Obtain a list of galleries for the specified user. This operation supports filtering and pagination
+// so the method also returns pagination metadata.
+func (gs *GalleriesStore) GetAllForUser(userID int64, filter filters.Input) ([]Gallery, filters.Meta, error) {
+	var (
+		galleries = []Gallery{}
+		pagMeta   = filter.CalculateMetadata(0)
+		tmp       []struct {
+			Gallery
+			Count int64 `DB:"count"`
+		}
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := gs.DB.SelectContext(ctx, &tmp, fmt.Sprintf(`
+		SELECT count(*) OVER(), * FROM galleries
+		WHERE ((LOWER(%s) LIKE LOWER('%%%s%%')) OR ($1 = '')) AND user_id = $2
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4`,
+		filter.SearchCol, filter.Search, filter.SortColumn(), filter.SortDirection(),
+	), filter.Search, userID, filter.Limit(), filter.Offset())
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			// No records is not an error, so simply return an empty slice.
+			return nil, pagMeta, nil
+		default:
+			return nil, pagMeta, err
+		}
 	}
 
 	for _, g := range tmp {
@@ -86,84 +138,45 @@ func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters
 	}
 	if len(tmp) > 0 {
 		pagMeta = filter.CalculateMetadata(tmp[0].Count)
-	} else {
-		pagMeta = filter.CalculateMetadata(0)
 	}
 
 	return galleries, pagMeta, nil
 }
 
-func (gs *GalleriesStore) GetAllForUser(userID int64, filter filters.Input) ([]Gallery, filters.Meta, error) {
-	var (
-		galleries = []Gallery{}
-		pagMeta   filters.Meta
-		dbg       []struct {
-			Gallery
-			Count int64 `db:"count"`
-		}
-	)
-
-	// The inclusion of the count(*) OVER() expression at the start
-	// of the query will result in the filtered record count being
-	// included as the first value in each row.
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := gs.db.SelectContext(ctx, &dbg, fmt.Sprintf(`
-		SELECT count(*) OVER(), * FROM galleries
-		WHERE ((LOWER(%s) LIKE LOWER('%%%s%%')) OR ($1 = '')) AND user_id = $2
-		ORDER BY %s %s, id ASC
-		LIMIT $3 OFFSET $4`,
-		filter.SearchCol, filter.Search, filter.SortColumn(), filter.SortDirection(),
-	), filter.Search, userID, filter.Limit(), filter.Offset())
-	if err == sql.ErrNoRows {
-		return nil, pagMeta, ErrRecordNotFound
-	}
-	if err != nil {
-		return nil, pagMeta, err
-	}
-
-	for _, g := range dbg {
-		galleries = append(galleries, g.Gallery)
-	}
-	if len(dbg) > 0 {
-		pagMeta = filter.CalculateMetadata(dbg[0].Count)
-	} else {
-		pagMeta = filter.CalculateMetadata(0)
-	}
-
-	return galleries, pagMeta, nil
-}
-
+// Inserts a new gallery. The gallery struct passed in must contain the necessary information,
+// but note that id, created_at and updated_at are set automatically by the database.
 func (gs *GalleriesStore) Insert(gallery Gallery) (Gallery, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := gs.db.GetContext(ctx, &gallery, `
+	// Use the returning clause to collect values set by the database.
+	err := gs.DB.GetContext(ctx, &gallery, `
 			INSERT
 			INTO galleries (title, description, published, user_id, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, now(), now()) 
 			RETURNING id, created_at, updated_at
 	`, gallery.Title, gallery.Description, gallery.Published, gallery.UserID)
-	if err == sql.ErrNoRows {
-		return Gallery{}, ErrRecordNotFound
+	if err != nil {
+		return Gallery{}, err
 	}
 
-	return gallery, err
+	return gallery, nil
 }
 
+// Update an existing gallery. The gallery struct passed must contain the necessary information,
+// but note that some fields are retrieved automatically from the database.
 func (gs *GalleriesStore) Update(gallery Gallery) (Gallery, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := gs.db.GetContext(ctx, &gallery, `
+	err := gs.DB.GetContext(ctx, &gallery, `
 			UPDATE galleries SET title = $1, description = $2, published = $3, updated_at = now()
 			WHERE id = $4
-			RETURNING user_id, created_at, updated_at
+			RETURNING created_at, updated_at
 	`, gallery.Title, gallery.Description, gallery.Published, gallery.ID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Gallery{}, ErrRecordNotFound
 	}
 	if err != nil {
@@ -173,11 +186,14 @@ func (gs *GalleriesStore) Update(gallery Gallery) (Gallery, error) {
 	return gallery, err
 }
 
+// Delete the specified gallery, note that deleting related images is a
+// responsibility of the caller.
 func (gs *GalleriesStore) DeleteGallery(id int64) error {
-	res, err := gs.db.Exec(`DELETE from galleries WHERE id=$1`, id)
+	res, err := gs.DB.Exec(`DELETE from galleries WHERE id=$1`, id)
 	if err != nil {
 		return err
 	}
+	// Check that the gallery is effectively deleted.
 	n, err := res.RowsAffected()
 	if err != nil {
 		return err

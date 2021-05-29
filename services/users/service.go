@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/store"
 	"github.com/anBertoli/snap-vault/pkg/validator"
 )
@@ -58,7 +59,7 @@ func (us *UsersService) RegisterUser(ctx context.Context, name, email, password 
 	}
 
 	// Initialize stats for the user.
-	err = us.Store.Stats.InsertForUser(user.ID)
+	err = us.Store.Stats.InitStatsForUser(user.ID)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
 	}
@@ -114,7 +115,7 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrRecordNotFound):
-			return "", store.ErrUnauthenticated
+			return "", auth.ErrUnauthenticated
 		default:
 			return "", err
 		}
@@ -125,7 +126,7 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 	if err != nil {
 		switch {
 		case err == bcrypt.ErrMismatchedHashAndPassword:
-			return "", store.ErrUnauthenticated
+			return "", auth.ErrUnauthenticated
 		default:
 			return "", err
 		}
@@ -201,9 +202,9 @@ func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store
 
 // List all the auth keys of the user.
 func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
-	keys, err := us.Store.Keys.GetAllForUser(auth.User.ID)
+	keys, err := us.Store.Keys.GetAllForUser(authData.User.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,9 +228,9 @@ func (us *UsersService) ListUserKeys(ctx context.Context) ([]KeysList, error) {
 
 // Create a new auth key for the authenticated user with the provided permissions.
 func (us *UsersService) AddUserKey(ctx context.Context, permissions store.Permissions) (store.Keys, error) {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
-	keys, err := us.Store.Keys.New(auth.User.ID)
+	keys, err := us.Store.Keys.New(authData.User.ID)
 	if err != nil {
 		return store.Keys{}, err
 	}
@@ -245,11 +246,11 @@ func (us *UsersService) AddUserKey(ctx context.Context, permissions store.Permis
 // Edit an existing auth key for the authenticated user with the provided permissions.
 // The main auth key for the account cannot be edited.
 func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permissions store.Permissions) (store.Keys, store.Permissions, error) {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	// Search the specified auth key.
 	var targetKeys *store.Keys
-	userKeys, err := us.Store.Keys.GetAllForUser(auth.User.ID)
+	userKeys, err := us.Store.Keys.GetAllForUser(authData.User.ID)
 	if err != nil {
 		return store.Keys{}, store.Permissions{}, err
 	}
@@ -283,10 +284,10 @@ func (us *UsersService) EditUserKey(ctx context.Context, keyID int64, permission
 // Delete an existing auth key for the authenticated user. The main auth key for the account
 // cannot be deleted.
 func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	var targetKeys *store.Keys
-	userKeys, err := us.Store.Keys.GetAllForUser(auth.User.ID)
+	userKeys, err := us.Store.Keys.GetAllForUser(authData.User.ID)
 	if err != nil {
 		return err
 	}
@@ -321,11 +322,16 @@ func (us *UsersService) DeleteUserKey(ctx context.Context, keyID int64) error {
 	return nil
 }
 
+// Retrieve the authentication data about the authenticated user.
+func (us *UsersService) GetMe(ctx context.Context) (auth.Auth, error) {
+	return auth.ContextGetAuth(ctx)
+}
+
 // Retrieve statistics about the user.
 func (us *UsersService) GetStats(ctx context.Context) (store.Stats, error) {
-	auth := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
-	stats, err := us.Store.Stats.GetForUser(auth.User.ID)
+	stats, err := us.Store.Stats.GetForUser(authData.User.ID)
 	if err != nil {
 		return store.Stats{}, err
 	}

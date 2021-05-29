@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/anBertoli/snap-vault/pkg/auth"
 	"github.com/anBertoli/snap-vault/pkg/filters"
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
@@ -48,7 +49,7 @@ func (sm *StatsMiddleware) Update(ctx context.Context, gallery store.Gallery) (s
 }
 
 func (sm *StatsMiddleware) Delete(ctx context.Context, galleryID int64) error {
-	authData := store.ContextGetAuth(ctx)
+	authData := auth.MustContextGetAuth(ctx)
 
 	err := sm.Next.Delete(ctx, galleryID)
 	if err != nil {
