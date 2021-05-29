@@ -7,7 +7,7 @@ import (
 )
 
 // The filters package provides utilities to be used in listing operations,
-// to support easily pagination and filtering.
+// to easily support pagination and filtering.
 
 // Filtering and pagination input for listing operations.
 type Input struct {
@@ -18,6 +18,18 @@ type Input struct {
 	Search               string
 	SearchCol            string
 	SearchColumnSafeList []string
+}
+
+// Metadata output of a listing operation, based upon the Input and
+// the result of the listing operation.
+type Meta struct {
+	CurrentPage  int    `json:"current_page"`
+	PageSize     int    `json:"page_size"`
+	FirstPage    int    `json:"first_page"`
+	LastPage     int    `json:"last_page"`
+	TotalRecords int64  `json:"total_records"`
+	Search       string `json:"search,omitempty"`
+	SearchField  string `json:"search_field,omitempty"`
 }
 
 // Extract the column to be used for sorting.
@@ -62,18 +74,6 @@ func (p Input) Validate() error {
 		}
 	}
 	return fmt.Errorf("%s not allowed as search column", p.SearchCol)
-}
-
-// Metadata output of a listing operation, based upon the Input and
-// the result of the listing operation.
-type Meta struct {
-	CurrentPage  int    `json:"current_page"`
-	PageSize     int    `json:"page_size"`
-	FirstPage    int    `json:"first_page"`
-	LastPage     int    `json:"last_page"`
-	TotalRecords int64  `json:"total_records"`
-	Search       string `json:"search,omitempty"`
-	SearchField  string `json:"search_field,omitempty"`
 }
 
 // The CalculateMetadata() function calculates the appropriate pagination metadata given
