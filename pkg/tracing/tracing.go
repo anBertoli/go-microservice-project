@@ -9,9 +9,9 @@ import (
 )
 
 // The tracing package provides request tracing via a RequestTrace struct shared via
-// contexts. Note that by using the function of this package, other parts of the
+// contexts. Note that by using the function in this package, other parts of the
 // application could safely retrieve an anonymous trace from a context even if
-// was not set before.
+// it wasn't set before.
 
 // Define a private type to avoid collisions in the context values...
 type privateKey string
@@ -19,7 +19,7 @@ type privateKey string
 // ...and declare a const of that type.
 const requestTraceKey privateKey = "requestTrace"
 
-// Will contain several data about the request lifecycle.
+// Contains several data about the request lifecycle.
 type RequestTrace struct {
 	ID         string
 	Start      time.Time
@@ -37,14 +37,14 @@ func NewTraceToRequest(r *http.Request) *http.Request {
 	return TraceToRequestCtx(r, &trace)
 }
 
-// Put a trace into an HTTP request.
+// Put a trace into the HTTP request.
 func TraceToRequestCtx(r *http.Request, tr *RequestTrace) *http.Request {
 	ctx := r.Context()
 	childCtx := context.WithValue(ctx, requestTraceKey, tr)
 	return r.WithContext(childCtx)
 }
 
-// Get a trace into an HTTP request. If the request context doesn't have any
+// Get a request trace from the HTTP request. If the request context doesn't have any
 // trace return a default trace with no ID.
 func TraceFromRequestCtx(r *http.Request) *RequestTrace {
 	ctx := r.Context()
@@ -56,13 +56,8 @@ func TraceFromRequestCtx(r *http.Request) *RequestTrace {
 	}
 }
 
-// Put a trace into a context object.
-func TraceToCtx(ctx context.Context, tr *RequestTrace) context.Context {
-	return context.WithValue(ctx, requestTraceKey, tr)
-}
-
 // Retrieve a trace from a context object. If the context doesn't have any trace
-// return a default trace with no ID.
+// return a default request trace with no ID.
 func TraceFromCtx(ctx context.Context) *RequestTrace {
 	if trace, ok := ctx.Value(requestTraceKey).(*RequestTrace); ok {
 		return trace
@@ -72,7 +67,7 @@ func TraceFromCtx(ctx context.Context) *RequestTrace {
 	}
 }
 
-// Generate a random string of the requested length.
+// Generate a random string of the indicated length.
 func genRequestID(length int) string {
 	chars := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	rand.Seed(time.Now().UnixNano())
