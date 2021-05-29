@@ -1,43 +1,50 @@
 {{define "subject"}}Recover main keys{{end}}
 
 {{define "plainBody"}}
-Hi,
-Follow this instructions to regenerate your main keys. Please go to {{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}.
-Please note that this is a one-time use token and it will expire after 3 hours.
+    Hi,
+    Follow this instructions to regenerate your main keys. Please go to {{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}.
+    Please note that this is a one-time use token and it will expire after 3 hours.
 
-Thanks,
-The Snap Vault Team
+    Thanks,
+    The Snap Vault Team
 {{end}}
 
 {{define "htmlBody"}}
 <!doctype html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width" />
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-<body>
-    <h2>Snap Vault Main Keys Recovery</h2>
-    <p>Hi!</p>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+        <style>
+        * {
+            font-family: 'Roboto', sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Snap Vault Main Keys Recovery</h2>
+        <p>Hi!</p>
 
-    <p>
-    Follow this instructions to regenerate your main keys. Please click the button below to obtain new main keys,
-    take note of it, since they will be displayed only one time.
-    </p>
-    <form action="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">
-        <button type="submit">Activate account</button>
-    </form>
-    <p>
-        If the button doesn't work go to the following link:
-        <a href="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}</a>
-    </p>
-    <p>
-        Please note that this is a one-time use token and it will expire after 3 hours.
-    </p>
-    <p>
-        Thanks,
-        The Snap Vault Team
-    </p>
-</body>
-</html>
+        <p>
+        Follow this instructions to regenerate your main keys. Please click the button below to obtain new main keys,
+        take note of it, since they will be displayed only one time.
+        </p>
+        <form action="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">
+            <button type="submit">Activate account</button>
+        </form>
+        <p>
+            If the button doesn't work go to the following link:
+            <a href="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}</a>
+        </p>
+        <p>
+            Please note that this is a one-time use token and it will expire after 3 hours.
+        </p>
+        <p>
+            Thanks,
+            The Snap Vault Team
+        </p>
+    </body>
+    </html>
 {{end}}

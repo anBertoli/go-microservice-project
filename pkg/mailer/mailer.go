@@ -8,17 +8,16 @@ import (
 	"time"
 )
 
-// Below we declare a new variable with the type embed.FS (embedded file system) to hold
-// our email templates. This has a comment directive in the format `//go:embed <path>`
-// IMMEDIATELY ABOVE it, which indicates to Go that we want to store the contents of the
-// ./templates directory in the templateFS embedded file system variable.
-// ↓↓↓
+// Declare a new variable with the type embed.FS (embedded file system) to hold email
+// templates. This has a comment directive in the format `//go:embed <path>` IMMEDIATELY
+// ABOVE it, which indicates to Go that we want to store the contents of the ./templates
+// directory in the templateFS embedded file system variable.
+
 //go:embed "templates"
 var templateFS embed.FS
 
 // Define a Mailer struct which contains a mail.Dialer instance (used to connect to a
-// SMTP server) and the sender information for your emails (the name and address you
-// want the email to be from, such as "Alice Smith <alice@example.com>").
+// SMTP server) and the sender information for your emails.
 type Mailer struct {
 	dialer *mail.Dialer
 	sender string
@@ -40,23 +39,21 @@ func New(host string, port int, username, password, sender string) Mailer {
 // the name of the file containing the templates, and any dynamic data for
 // the templates as an interface{} parameter.
 func (m Mailer) Send(recipient, templateFile string, data interface{}) error {
-	// Use the ParseFS() method to parse the required template file from the embedded
-	// file system.
+
+	// Parse the required template file from the embedded file system.
 	tmpl, err := template.New("email").ParseFS(templateFS, "templates/"+templateFile)
 	if err != nil {
 		return err
 	}
 
-	// Execute the named template "subject", passing in the dynamic data and storing the
-	// result in a bytes.Buffer variable.
+	// Execute the named template "subject", passing in the dynamic data.
 	subject := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(subject, "subject", data)
 	if err != nil {
 		return err
 	}
 
-	// Follow the same pattern to execute the "plainBody" template and store the result
-	// in the plainBody variable.
+	// Follow the same pattern to execute the "plainBody" template.
 	plainBody := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(plainBody, "plainBody", data)
 	if err != nil {
@@ -80,12 +77,6 @@ func (m Mailer) Send(recipient, templateFile string, data interface{}) error {
 	msg.SetBody("text/plain", plainBody.String())
 	msg.AddAlternative("text/html", htmlBody.String())
 
-	// Call the DialAndSend() method on the dialer, passing in the message to send. This
-	// opens a connection to the SMTP server, sends the message, then closes the
-	// connection.
-	err = m.dialer.DialAndSend(msg)
-	if err != nil {
-		return err
-	}
-	return nil
+	// Open a connection to the SMTP server, send the message, then close the connection.
+	return m.dialer.DialAndSend(msg)
 }
