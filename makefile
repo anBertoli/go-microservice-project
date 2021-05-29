@@ -2,8 +2,10 @@
 GIT_DESCRIPTION = $(shell git describe --always --dirty --tags --long)
 LINKER_FLAGS = '-s -X main.version=${GIT_DESCRIPTION}'
 
+REMOTE_IP = '168.119.170.168'
+DB_PASSWORD = "snapvault-secret-password"
 
-.PHONY: run build clean remote/provisioning remote/deploy
+.PHONY: run build build-linux build-mac clean remote/provisioning remote/deploy cloc
 
 # If you want,it’s possible to suppress commands from being echoed by prefixing them with the @ character.
 run:
@@ -20,10 +22,6 @@ build-mac: clean
 	mkdir -p ./bin/mac
 	GOOS=darwin GOARCH=amd64 go build -ldflags=${LINKER_FLAGS} -o ./bin/mac/snapvault-api_${GIT_DESCRIPTION} ./cmd/api
 	GOOS=darwin GOARCH=amd64 go build -ldflags=${LINKER_FLAGS} -o ./bin/mac/snapvault-cli_${GIT_DESCRIPTION} ./cmd/cli
-
-
-REMOTE_IP = '168.119.170.168'
-DB_PASSWORD = "snapvault-secret-password"
 
 remote/provisioning:
 	scp -i ~/.ssh/hetzner_rsa  -r ./deploy root@${REMOTE_IP}:/root/
@@ -43,3 +41,6 @@ remote/deploy: build-linux
 
 clean:
 	rm -rf bin
+
+cloc:
+	cloc pkg/ services/ cmd/ deploy/ conf/ migrations/ .gitignore makefile README.md go.mod go.sum
