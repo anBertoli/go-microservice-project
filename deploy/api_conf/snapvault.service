@@ -7,14 +7,13 @@ After=postgresql.service
 After=network-online.target
 Wants=network-online.target
 
-# Configure service start rate limiting. If the service is (re)started more than 5 times
+# Configure service restart rate limiting. If the service is restarted more than 5 times
 # in 600 seconds then don't permit it to start anymore.
 StartLimitIntervalSec=600
 StartLimitBurst=5
 
 [Service]
-# Execute the API binary as the snapvault user, loading the environment variables from
-# /etc/environment and using the working directory /home/greenlight.
+# Execute the API binary as the snapvault user.
 Type=exec
 User=snapvault
 Group=snapvault
