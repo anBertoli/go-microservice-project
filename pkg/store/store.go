@@ -68,6 +68,14 @@ func ContextGetAuth(ctx context.Context) *Auth {
 	return authData
 }
 
+func MustContextGetAuth(ctx context.Context) Auth {
+	authData, ok := ctx.Value(authDataContextKey).(*Auth)
+	if !ok {
+		panic("cannot retrieve auth data from context")
+	}
+	return *authData
+}
+
 func RequireAuthenticatedUser(ctx context.Context) (*Auth, error) {
 	auth := ContextGetAuth(ctx)
 	if auth == nil {

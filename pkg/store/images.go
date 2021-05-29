@@ -140,9 +140,9 @@ func (is *ImagesStore) GetAllPublic(filter filters.Input) ([]Image, filters.Meta
 		images = append(images, i.Image)
 	}
 	if len(tmp) > 0 {
-		metadata = filter.CalculateOutput(tmp[0].Count)
+		metadata = filter.CalculateMetadata(tmp[0].Count)
 	} else {
-		metadata = filter.CalculateOutput(0)
+		metadata = filter.CalculateMetadata(0)
 	}
 
 	return images, metadata, nil
@@ -188,9 +188,9 @@ func (is *ImagesStore) GetAllForGallery(galleryID int64, filter filters.Input) (
 	}
 
 	if len(tmp) > 0 {
-		meta = filter.CalculateOutput(tmp[0].Count)
+		meta = filter.CalculateMetadata(tmp[0].Count)
 	} else {
-		meta = filter.CalculateOutput(0)
+		meta = filter.CalculateMetadata(0)
 	}
 
 	return images, meta, nil

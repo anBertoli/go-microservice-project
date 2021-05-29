@@ -32,6 +32,7 @@ func NewGalleriesStore(db *sqlx.DB) GalleriesStore {
 	}
 }
 
+// Retrieve a specific gallery from the postgres database.
 func (gs *GalleriesStore) Get(id int64) (Gallery, error) {
 	var gallery Gallery
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -84,9 +85,9 @@ func (gs *GalleriesStore) GetAllPublic(filter filters.Input) ([]Gallery, filters
 		galleries = append(galleries, g.Gallery)
 	}
 	if len(tmp) > 0 {
-		pagMeta = filter.CalculateOutput(tmp[0].Count)
+		pagMeta = filter.CalculateMetadata(tmp[0].Count)
 	} else {
-		pagMeta = filter.CalculateOutput(0)
+		pagMeta = filter.CalculateMetadata(0)
 	}
 
 	return galleries, pagMeta, nil
@@ -126,9 +127,9 @@ func (gs *GalleriesStore) GetAllForUser(userID int64, filter filters.Input) ([]G
 		galleries = append(galleries, g.Gallery)
 	}
 	if len(dbg) > 0 {
-		pagMeta = filter.CalculateOutput(dbg[0].Count)
+		pagMeta = filter.CalculateMetadata(dbg[0].Count)
 	} else {
-		pagMeta = filter.CalculateOutput(0)
+		pagMeta = filter.CalculateMetadata(0)
 	}
 
 	return galleries, pagMeta, nil

@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+// The filters package provides utilities to be used in listing operations,
+// to support easily pagination and filtering.
+
+// Filtering and pagination input for listing operations.
 type Input struct {
 	Page                 int
 	PageSize             int
@@ -16,12 +20,13 @@ type Input struct {
 	SearchColumnSafeList []string
 }
 
+// Extract the column to be used for sorting.
 func (p Input) SortColumn() string {
 	return strings.TrimPrefix(p.SortCol, "-")
 }
 
-// Return the sort direction ("ASC" or "DESC") depending on the prefix character of the
-// SortCol field.
+// Get sort direction ("ASC" or "DESC") to be used during SELECT queries
+// depending on the prefix character of the SortCol field.
 func (p Input) SortDirection() string {
 	if strings.HasPrefix(p.SortCol, "-") {
 		return "DESC"
@@ -29,16 +34,18 @@ func (p Input) SortDirection() string {
 	return "ASC"
 }
 
+// Limit to be used during database SELECT queries.
 func (p Input) Limit() int {
 	return p.PageSize
 }
 
+// Offset to be used during database SELECT queries.
 func (p Input) Offset() int {
 	return (p.Page - 1) * p.PageSize
 }
 
-// Make sure the filter input is valid, that is, the sort col is valid (listed in
-// SortSafeList) and the search col is valis (contained in the SearchColumnSafeList).
+// Make sure the filter input is valid, that is, the sortCol is valid (must be present in
+// SortSafeList) and the searchCol is valid (contained in the SearchColumnSafeList).
 func (p Input) Validate() error {
 	var ok bool
 	for _, safeValue := range p.SortSafeList {
@@ -57,17 +64,25 @@ func (p Input) Validate() error {
 	return fmt.Errorf("%s not allowed as search column", p.SearchCol)
 }
 
-// The CalculateOutput() function calculates the appropriate pagination metadata given the
-// number of obtained records, current page, and page size values. Note that the last page
-// value is calculated using the math.Ceil() function, which rounds up a float to the
-// nearest integer. So, for example, if there were 12 records in total and a page size
-// of 5, the last page value would be math.Ceil(12/5) = 3.
-func (p Input) CalculateOutput(totalRecords int64) Meta {
+// Metadata output of a listing operation, based upon the Input and
+// the result of the listing operation.
+type Meta struct {
+	CurrentPage  int    `json:"current_page"`
+	PageSize     int    `json:"page_size"`
+	FirstPage    int    `json:"first_page"`
+	LastPage     int    `json:"last_page"`
+	TotalRecords int64  `json:"total_records"`
+	Search       string `json:"search,omitempty"`
+	SearchField  string `json:"search_field,omitempty"`
+}
+
+// The CalculateMetadata() function calculates the appropriate pagination metadata given
+// the number of obtained records, current page, and page size values.
+func (p Input) CalculateMetadata(totalRecords int64) Meta {
 	searchField := ""
 	if p.Search != "" {
 		searchField = p.SearchCol
 	}
-
 	meta := Meta{
 		Search:       p.Search,
 		SearchField:  searchField,
@@ -80,16 +95,5 @@ func (p Input) CalculateOutput(totalRecords int64) Meta {
 	if totalRecords != 0 {
 		meta.LastPage = int(math.Ceil(float64(totalRecords) / float64(p.PageSize)))
 	}
-
 	return meta
-}
-
-type Meta struct {
-	CurrentPage  int    `json:"current_page"`
-	PageSize     int    `json:"page_size"`
-	FirstPage    int    `json:"first_page"`
-	LastPage     int    `json:"last_page"`
-	TotalRecords int64  `json:"total_records"`
-	Search       string `json:"search,omitempty"`
-	SearchField  string `json:"search_field,omitempty"`
 }

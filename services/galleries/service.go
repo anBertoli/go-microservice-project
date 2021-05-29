@@ -196,7 +196,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 // Delete a gallery and all related images. The authenticated user must be
 // the owner of the gallery.
 func (gs *GalleriesService) Delete(ctx context.Context, galleryID int64) error {
-	authData := store.ContextGetAuth(ctx)
+	authData := store.MustContextGetAuth(ctx)
 
 	galleryToDelete, err := gs.store.Galleries.Get(galleryID)
 	if err != nil {
