@@ -13,8 +13,6 @@ import (
 type Service interface {
 	RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error)
 	ActivateUser(ctx context.Context, token string) (store.User, error)
-	GenKeyRecoveryToken(ctx context.Context, email, password string) (string, error)
-	RecoverMainKey(ctx context.Context, token string) (store.Keys, error)
 
 	ListUserKeys(ctx context.Context) ([]KeysList, error)
 	AddUserKey(ctx context.Context, permissions store.Permissions) (store.Keys, error)
@@ -23,6 +21,9 @@ type Service interface {
 
 	GetMe(ctx context.Context) (auth.Auth, error)
 	GetStats(ctx context.Context) (store.Stats, error)
+
+	GenKeyRecoveryToken(ctx context.Context, email, password string) (string, error)
+	RegenerateMainKey(ctx context.Context, token string) (store.Keys, error)
 }
 
 var (

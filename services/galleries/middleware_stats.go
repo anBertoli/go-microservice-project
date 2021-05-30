@@ -15,6 +15,7 @@ type StatsMiddleware struct {
 	Service
 }
 
+// Increment the galleries counter for the user if a new gallery is successfully created.
 func (sm *StatsMiddleware) Insert(ctx context.Context, gallery store.Gallery) (store.Gallery, error) {
 	gallery, err := sm.Service.Insert(ctx, gallery)
 	if err != nil {
@@ -28,6 +29,7 @@ func (sm *StatsMiddleware) Insert(ctx context.Context, gallery store.Gallery) (s
 	return gallery, nil
 }
 
+// Decrement the galleries counter for the user if the gallery is deleted.
 func (sm *StatsMiddleware) Delete(ctx context.Context, galleryID int64) error {
 	authData := auth.MustContextGetAuth(ctx)
 

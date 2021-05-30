@@ -122,10 +122,10 @@ func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID
 
 	go func() {
 		// It's vital to release the token of the semaphore in any case to release
-		// acquired resources. We must close the writer so the caller knows (from
-		// the reader) that the bytes to read are ended.
+		// acquired resources. We must close the writer so the caller knows (while
+		// reading from the reader) that the bytes are ended.
 		defer func() {
-			_ = w.Close()
+			w.Close()
 			<-gs.sema
 		}()
 
@@ -138,10 +138,10 @@ func (gs *GalleriesService) Download(ctx context.Context, public bool, galleryID
 			// about that, simply drop the job and don't return any error.
 			case errors.Is(err, io.ErrClosedPipe):
 			// Real error coming from the internal streaming function. Log the error and
-			// store the job into the pipe, in order to inform the caller about the error.
+			// store the error into the pipe, in order to inform the caller about it.
 			default:
 				logger.Errorw("streaming gallery archive", "err", err)
-				_ = w.CloseWithError(err)
+				w.CloseWithError(err)
 			}
 		}
 	}()

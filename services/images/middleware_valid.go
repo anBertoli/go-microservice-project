@@ -14,14 +14,16 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/validator"
 )
 
-// The ValidationMiddleware validates incoming data of each request, rejecting them if
-// some pieces of needed information are missing or malformed. The middleware makes
-// sure the next service in the chain will receive valid data and computes the
-// MIME type of the image.
+// The ValidationMiddleware validates incoming data of each request, rejecting them if some
+// pieces of needed information are missing or malformed. The middleware makes sure the next
+// service in the chain will receive valid data and the MIME type of the image is known. Some
+// methods are no-ops since there it isn't needed to validate data (the calls are handled
+// directly from the embedded Service interface).
 type ValidationMiddleware struct {
 	Service
 }
 
+// Validate the filtering and pagination parameters used in listing.
 func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	err := filter.Validate()
 	if err != nil {
@@ -32,6 +34,7 @@ func (vm *ValidationMiddleware) ListAllPublic(ctx context.Context, filter filter
 	return vm.Service.ListAllPublic(ctx, filter)
 }
 
+// Validate the filtering and pagination parameters used in listing.
 func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, public bool, galleryID int64, filter filters.Input) ([]store.Image, filters.Meta, error) {
 	err := filter.Validate()
 	if err != nil {
@@ -42,6 +45,8 @@ func (vm *ValidationMiddleware) ListForGallery(ctx context.Context, public bool,
 	return vm.Service.ListForGallery(ctx, public, galleryID, filter)
 }
 
+// Validate that the image bytes are not zero and the title is valid. Additionally detect the
+// content mime type and make sure it is an image.
 func (vm *ValidationMiddleware) Insert(ctx context.Context, reader io.Reader, image store.Image) (store.Image, error) {
 	v := validator.New()
 
@@ -80,6 +85,7 @@ func (vm *ValidationMiddleware) Insert(ctx context.Context, reader io.Reader, im
 	return vm.Service.Insert(ctx, reader, image)
 }
 
+//  Validate the title used to update an existing image.
 func (vm *ValidationMiddleware) Update(ctx context.Context, image store.Image) (store.Image, error) {
 	v := validator.New()
 	v.Check(image.Title != "", "title", "must be specified")

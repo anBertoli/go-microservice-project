@@ -143,7 +143,7 @@ func (us *UsersService) GenKeyRecoveryToken(ctx context.Context, email, password
 
 // Regenerate the main auth key using the provided key recovery token. The auth key
 // must be delivered somehow to the user, since we don't store the plain text version.
-func (us *UsersService) RecoverMainKey(ctx context.Context, token string) (store.Keys, error) {
+func (us *UsersService) RegenerateMainKey(ctx context.Context, token string) (store.Keys, error) {
 
 	user, err := us.Store.Users.GetForToken(store.ScopeRecoverMainKeys, token)
 	if err != nil {
