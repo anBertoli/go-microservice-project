@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/anBertoli/snap-vault/pkg/store"
 	"net/http"
+
+	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// Simple healthcheck handler that returns info about the app.
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	env := env{
 		"status": "available",
@@ -16,6 +18,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 	app.sendJSON(w, r, http.StatusOK, env, nil)
 }
 
+// Documentation handler that list all editable permissions.
 func (app *application) listPermissionsHandler(w http.ResponseWriter, r *http.Request) {
 	env := env{
 		"permissions": store.EditablePermissions,

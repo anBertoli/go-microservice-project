@@ -17,22 +17,18 @@ const (
 )
 
 // The readJSON helper is used to decode the request body into the target destination.
-// Additional checks will provide more security, while checks implemented on errors
-// could return additional information.
 func readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 
 	// Limit the size of the request body to 1MB.
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytesBody))
 
-	// Read all the request body in memory as raw bytes. If an error occurs check
-	// the cause of the error. Additionally, the body cannot be empty.
+	// Read all the request body in memory as raw bytes. The body cannot be empty.
 	jsonBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		switch {
-		// Body > 1MB in size, read failed with the error "http: request body too large".
+		// Body > 1MB in size.
 		case err.Error() == "http: request body too large":
 			return fmt.Errorf("body must not be larger than %d bytes", maxBytesBody)
-		// For anything else, return the error message as-is.
 		default:
 			return err
 		}
@@ -63,13 +59,6 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 	case errors.As(err, &syntaxError):
 		return fmt.Errorf("body contains badly-formed JSON (at character %d)", syntaxError.Offset)
 
-	// In some circumstances Decode() may also return an io.ErrUnexpectedEOF error
-	// for syntax errors in the JSON. So we check for this using errors.Is() and
-	// return a generic error message. There is an open issue regarding this at
-	// https://github.com/golang/go/issues/25956.
-	case errors.Is(err, io.ErrUnexpectedEOF):
-		return errors.New("body contains badly-formed JSON")
-
 	// Likewise, catch any *json.UnmarshalTypeError errors. These occur when the
 	// JSON value is the wrong type for the target destination. If the error relates
 	// to a specific field, then we include that in our error message to make it
@@ -82,7 +71,7 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 
 	// A json.InvalidUnmarshalError error will be returned if we pass a nil pointer
 	// to json.Unmarshal(). We catch this and panic, rather than returning an error,
-	// because is a developer error that must not happen.
+	// because this is a developer error that must not happen.
 	case errors.As(err, &invalidUnmarshalError):
 		panic(err)
 
@@ -92,7 +81,7 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 	}
 }
 
-// Extract a numeric value from the URL params provided by the used router.
+// Extract a numeric value from the URL params provided by the router.
 func readUrlIntParam(r *http.Request, param string) (int64, error) {
 	params := mux.Vars(r)
 	id, err := strconv.ParseInt(params[param], 10, 64)

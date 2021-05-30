@@ -42,8 +42,9 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodGet).Path("/v1/users/activate").HandlerFunc(app.activateUserHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getUserAccountHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/stats").HandlerFunc(app.getUserStatsHandler)
-	router.Methods(http.MethodPost).Path("/v1/users/recover-keys").HandlerFunc(app.genKeyRecoveryTokenHandler)
-	router.Methods(http.MethodGet).Path("/v1/users/recover-keys").HandlerFunc(app.recoverKeyHandler)
+
+	router.Methods(http.MethodPost).Path("/v1/users/recover-key").HandlerFunc(app.genKeyRecoveryTokenHandler)
+	router.Methods(http.MethodGet).Path("/v1/users/recover-key").HandlerFunc(app.recoverKeyHandler)
 
 	router.Methods(http.MethodGet).Path("/v1/users/keys").HandlerFunc(app.listUserKeysHandler)
 	router.Methods(http.MethodPost).Path("/v1/users/keys").HandlerFunc(app.addUserKeyHandler)
@@ -74,11 +75,11 @@ func (app *application) handler() http.Handler {
 	router.NotFoundHandler = http.HandlerFunc(app.routeNotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedHandler)
 
-	// Apply middlewares to the global handler. Here the order matters, e.g. the enableCORS
-	// middleware should be triggered before the rate limiting one. This because we want to
-	// avoid the circumstance of a pre-flight request allowed and a 'real' request blocked
-	// due to the rate limiting threshold reached.
-	handler := app.extractKey(router)
+	// Apply middlewares to the global handler. Here the order matters, e.g. the enableCORS middleware
+	// should be triggered before the rate limiting one. This because we want to avoid the
+	// circumstance of an allowed pre-flight request and a 'real' request blocked due to
+	// the rate limiting threshold reached.
+	handler := app.extractAuthKey(router)
 	handler = app.rateLimit(handler)
 	handler = app.enableCORS(handler)
 	handler = app.logging(handler)
@@ -86,6 +87,7 @@ func (app *application) handler() http.Handler {
 }
 
 func (app *application) serve() error {
+
 	// Declare a HTTP server setting sensible default for different timeouts.
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", app.config.Address, app.config.Port),

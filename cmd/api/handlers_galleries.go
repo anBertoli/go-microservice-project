@@ -8,6 +8,8 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
+// List public galleries. Filtering and pagination is supported and specified via
+// query parameters.
 func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -22,13 +24,15 @@ func (app *application) listPublicGalleriesHandler(w http.ResponseWriter, r *htt
 
 	galleries, metadata, err := app.galleries.ListAllPublic(r.Context(), filter)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"galleries": galleries, "filter": metadata}, nil)
 }
 
+// List galleries owned by the authenticated user. Filtering and pagination is supported and
+// specified via query parameters.
 func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -43,28 +47,33 @@ func (app *application) listGalleriesHandler(w http.ResponseWriter, r *http.Requ
 
 	galleries, metadata, err := app.galleries.ListAllOwned(r.Context(), filter)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"galleries": galleries, "filter": metadata}, nil)
 }
 
-// Several responses are supported for this endpoint. The gallery could be visualized
-// as a JSON-formatted record or downloaded as a tar archive.
+// Get a specific public gallery. The response mode is specified via the query string,
+// while the gallery ID is specified in the URL parameters.
 func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Parse the 'get' mode from the query string.
 	galleryMode := readMode(r.URL.Query(), "mode", dataMode)
+
 	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
+	// Several responses are supported for this endpoint. The gallery could be visualized
+	// as a JSON-formatted record or downloaded as a tar archive.
 	switch galleryMode {
 	case attachmentMode, viewMode:
 		gallery, readCloser, err := app.galleries.Download(r.Context(), true, galleryID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -73,28 +82,33 @@ func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.R
 	case dataMode:
 		gallery, err := app.galleries.Get(r.Context(), true, galleryID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 	}
 }
 
-// Several responses are supported for this endpoint. The gallery could be visualized
-// as a JSON-formatted record or downloaded as a tar archive.
+// Download a specific gallery owned by the authenticated user. The response mode is specified
+// via the query string, while the gallery ID is specified in the URL parameters.
 func (app *application) getGalleryHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Parse the 'get' mode from the query string.
 	galleryMode := readMode(r.URL.Query(), "mode", dataMode)
+
 	galleryID, err := readUrlIntParam(r, "id")
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
+	// Several responses are supported for this endpoint. The gallery could be visualized
+	// as a JSON-formatted record or downloaded as a tar archive.
 	switch galleryMode {
 	case viewMode, attachmentMode:
 		gallery, readCloser, err := app.galleries.Download(r.Context(), false, galleryID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -103,13 +117,14 @@ func (app *application) getGalleryHandler(w http.ResponseWriter, r *http.Request
 	case dataMode:
 		gallery, err := app.galleries.Get(r.Context(), false, galleryID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 	}
 }
 
+// Create a new gallery reading the mandatory data from the JSON-formatted body.
 func (app *application) createGalleriesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title       string `json:"title"`
@@ -129,13 +144,15 @@ func (app *application) createGalleriesHandler(w http.ResponseWriter, r *http.Re
 		Published:   input.Published,
 	})
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 }
 
+// Update an existing gallery reading the data to be used from the JSON-formatted body.
+// The gallery to be updated is specified in the URL parameters.
 func (app *application) updateGalleryHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title       string `json:"title"`
@@ -161,13 +178,14 @@ func (app *application) updateGalleryHandler(w http.ResponseWriter, r *http.Requ
 		Published:   input.Published,
 	})
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"gallery": gallery}, nil)
 }
 
+// Delete an existing gallery. The gallery ID is parsed form the URL parameters.
 func (app *application) deleteGalleryHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := readUrlIntParam(r, "id")
 	if err != nil {
@@ -177,7 +195,7 @@ func (app *application) deleteGalleryHandler(w http.ResponseWriter, r *http.Requ
 
 	err = app.galleries.Delete(r.Context(), id)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 

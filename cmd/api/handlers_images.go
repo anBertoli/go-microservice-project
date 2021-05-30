@@ -8,11 +8,8 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/store"
 )
 
-// This file contains application methods which signatures match the http.HandlerFunc so
-// they can be registered as endpoints to our router. These methods act as wrappers
-// around the 'core' services of the application. They are used to decouple transport
-// dependent logic and issues from the business logic present in the services.
-
+// List public images. Filtering and pagination is supported and specified via
+// query parameters.
 func (app *application) listPublicImagesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -27,13 +24,16 @@ func (app *application) listPublicImagesHandler(w http.ResponseWriter, r *http.R
 
 	images, metadata, err := app.images.ListAllPublic(r.Context(), filter)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
+// List images of a gallery owned by the authenticated user. Filtering and pagination
+// is supported and specified via query parameters, while the gallery ID is specified
+// in the URL parameters.
 func (app *application) listGalleryImagesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -54,13 +54,15 @@ func (app *application) listGalleryImagesHandler(w http.ResponseWriter, r *http.
 
 	images, metadata, err := app.images.ListForGallery(r.Context(), false, galleryID, filter)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
+// List images of a public gallery. Filtering and pagination is supported and specified via
+// query parameters, while the gallery ID is specified in the URL parameters.
 func (app *application) listPublicGalleryImagesHandler(w http.ResponseWriter, r *http.Request) {
 	queryString := r.URL.Query()
 	filter := filters.Input{
@@ -81,13 +83,15 @@ func (app *application) listPublicGalleryImagesHandler(w http.ResponseWriter, r 
 
 	images, metadata, err := app.images.ListForGallery(r.Context(), true, galleryID, filter)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"images": images, "filter": metadata}, nil)
 }
 
+// Get a public image. The response mode is specified via the query string,
+// while the image ID is specified in the URL parameters.
 func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Request) {
 	imageMode := readMode(r.URL.Query(), "mode", dataMode)
 	imageID, err := readUrlIntParam(r, "image-id")
@@ -96,18 +100,20 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Several responses are supported for this endpoint. The image could be visualized
+	// as a JSON-formatted record, downloaded or viewed directly.
 	switch imageMode {
 	case dataMode:
 		image, err := app.images.Get(r.Context(), true, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 	case viewMode:
 		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -116,7 +122,7 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 	case attachmentMode:
 		image, readCloser, err := app.images.Download(r.Context(), true, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -126,6 +132,8 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// Get an image of a gallery owned by the authenticated user. The response mode is specified
+// via the query string, while the image ID is specified in the URL parameters.
 func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) {
 	imageMode := readMode(r.URL.Query(), "mode", dataMode)
 	imageID, err := readUrlIntParam(r, "image-id")
@@ -134,18 +142,20 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Several responses are supported for this endpoint. The image could be visualized
+	// as a JSON-formatted record, downloaded or viewed directly.
 	switch imageMode {
 	case dataMode:
 		image, err := app.images.Get(r.Context(), false, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 	case viewMode:
 		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -154,7 +164,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 	case attachmentMode:
 		image, readCloser, err := app.images.Download(r.Context(), false, imageID)
 		if err != nil {
-			app.encodeError(w, r, err)
+			app.errorResponse(w, r, err)
 			return
 		}
 		app.streamBytes(w, r, readCloser, http.Header{
@@ -166,6 +176,9 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 
 const maxBodyBytes = 1024 * 1024 * 50
 
+// Upload a new image for an existing gallery. The gallery ID is specified in the URL parameters,
+// the title must be specified in the query string. The caption field could be set using
+// the edit image endpoint.
 func (app *application) createImageHandler(w http.ResponseWriter, r *http.Request) {
 	galleryID, err := readUrlIntParam(r, "gallery-id")
 	if err != nil {
@@ -182,13 +195,15 @@ func (app *application) createImageHandler(w http.ResponseWriter, r *http.Reques
 		Title:     title,
 	})
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 }
 
+// Edit the fields of an existing image, reading the data from the JSON-formatted body.
+// The image ID is specified in the URL parameters.
 func (app *application) editImageHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title   string `json:"title"`
@@ -213,13 +228,15 @@ func (app *application) editImageHandler(w http.ResponseWriter, r *http.Request)
 		Caption: input.Caption,
 	})
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"image": image}, nil)
 }
 
+// Delete an existing image og a gallery owned by the authenticated user.
+// The image ID is specified in the URL parameters.
 func (app *application) deleteImageHandler(w http.ResponseWriter, r *http.Request) {
 	imageID, err := readUrlIntParam(r, "image-id")
 	if err != nil {
@@ -229,7 +246,7 @@ func (app *application) deleteImageHandler(w http.ResponseWriter, r *http.Reques
 
 	_, err = app.images.Delete(r.Context(), imageID)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 

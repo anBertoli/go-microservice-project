@@ -13,14 +13,18 @@ import (
 	"github.com/anBertoli/snap-vault/services/users"
 )
 
-func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err error) {
+// The errorResponse method is a convenient helper used to inspect the error passed in
+// and to send the appropriate error message. Note that if we want to treat specific
+// errors differently in some HTTP handlers we can catch them there instead of using
+// the errorResponse helper.
+func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	v := validator.New()
 
 	switch {
 	case errors.As(err, &v):
 		app.failedValidationResponse(w, r, v)
 
-	// auth errors
+	// Authentication errors.
 	case errors.Is(err, auth.ErrUnauthenticated):
 		app.unauthenticatedResponse(w, r)
 	case errors.Is(err, auth.ErrNotActivated):
@@ -28,7 +32,7 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 	case errors.Is(err, auth.ErrNoPermission):
 		app.wrongPermissionsResponse(w, r)
 
-	// store errors
+	// Storage errors.
 	case errors.Is(err, store.ErrDuplicateEmail):
 		app.emailTakenResponse(w, r)
 	case errors.Is(err, store.ErrRecordNotFound):
@@ -38,26 +42,27 @@ func (app *application) encodeError(w http.ResponseWriter, r *http.Request, err 
 	case errors.Is(err, store.ErrForbidden):
 		app.forbiddenResponse(w, r)
 
-	// users service errors
+	// Users service errors.
 	case errors.Is(err, users.ErrMainKeysEdit):
 		app.notEditableKeysResponse(w, r)
 
-	// galleries service errors
+	// Galleries service errors.
 	case errors.Is(err, galleries.ErrBusy):
 		app.tooBusyResponse(w, r)
 
-	// images service errors
+	// Images service errors.
 	case errors.Is(err, images.ErrMaxSpaceReached):
 		app.maxSpaceReachedResponse(w, r)
 
-	// default to 500 errors
+	// Default to 500 errors.
 	default:
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
-// These are generic responses given back to the user. Below there are more specific
-// error responses that may utilize the same HTTP code but differ for the returned message.
+// These are generic responses given back to the user. The functions below use the
+// sendJSONError method of the application struct, with a specific constant error.
+
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.sendJSONError(w, r, errResponse{
 		message: "the server encountered a problem and could not process your request",
@@ -119,7 +124,8 @@ func (app *application) tooBusyResponse(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// Errors responses used by the router.
+// Errors responses used by the router. The sendJSONError method is used again.
+
 func (app *application) routeNotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	err := errors.New("the requested API endpoint doesn't exist")
 	app.sendJSONError(w, r, errResponse{
@@ -138,7 +144,10 @@ func (app *application) methodNotAllowedHandler(w http.ResponseWriter, r *http.R
 	})
 }
 
-// More specific error responses.
+// These are more specific error responses that may utilize the same HTTP code of
+// the functions above but differ for the returned message. The sendJSONError
+// method is used again.
+
 func (app *application) malformedJSONResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),

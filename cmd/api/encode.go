@@ -10,8 +10,7 @@ import (
 	"github.com/anBertoli/snap-vault/pkg/tracing"
 )
 
-// The env type is a flexible wrapper used to send JSON-formatted data
-// using the functions provided in this file.
+// The env type is a flexible wrapper used to send JSON-formatted data.
 type env map[string]interface{}
 
 // The sendJSON helper writes the provided JSON-formatted data to response writer,
@@ -42,6 +41,7 @@ func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, re
 		"status_code": resp.status,
 		"error":       resp.message,
 	}, nil)
+
 	if err != nil {
 		app.logger.Errorw("sending json", "id", trace.ID, "err", err)
 		trace.HttpStatus = http.StatusInternalServerError
@@ -57,21 +57,19 @@ type errResponse struct {
 	err     error
 }
 
-// The writeJSON() helper writes the data to the response writer. The data is
-// JSON-formatted before being sent. Provided headers are set on the response.
+// The writeJSON() helper writes the data to the response writer along with provided
+// headers. The data is JSON-formatted before being sent.
 func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header) error {
 
-	// Encode the data to JSON, returning the error if there was one.
-	// Avoid indentation and newline in case of performance issues,
-	// otherwise it makes the output easier to read for clients.
+	// Encode the data to JSON. Avoid indentation and newline in case of performance
+	// issues, otherwise it makes the output easier to read for clients.
 	js, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
 	js = append(js, '\n')
 
-	// Loop through the header map and add each header to the
-	// http.ResponseWriter header map.
+	// Add the headers to the response.
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
@@ -85,7 +83,7 @@ func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header)
 }
 
 // The streamBytes function is a helper function used to send binary data to the client.
-// The data is extracted from a reader, which if it's also a closer, it will be closed
+// The data is extracted from a reader, which if it's also a closer it will be closed
 // after reading all the content.
 func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, reader io.Reader, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
@@ -106,7 +104,7 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		}()
 	}
 
-	// Set provided headers before start sending data.
+	// Add the headers to the response.
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
@@ -122,8 +120,8 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 			logger.Errorw("network/client issue streaming bytes", "err", err)
 		default:
 			// The error is originated internally. Here the status code on the
-			// response was already set and we cannot modify it, but we can
-			// report this internally.
+			// response was already set (automatically before the first write)
+			// and we cannot modify it, but we can report this internally.
 			logger.Errorw("streaming bytes", "err", err)
 		}
 

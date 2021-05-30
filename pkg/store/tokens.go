@@ -10,7 +10,8 @@ import (
 // Define the scopedof the tokens used in the application.
 const (
 	ScopeActivation      = "activation"
-	ScopeRecoverMainKeys = "recover-keys"
+	ScopeRecoverMainKeys = "recover-main-key"
+	ScopeRecoverPassword = "recover-password"
 )
 
 type Token struct {

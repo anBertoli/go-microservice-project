@@ -4,6 +4,9 @@ import (
 	"net/http"
 )
 
+// Register a new user into the system. The user must be activated before using
+// the newly generated auth key. User data must be provided in the JSON body.
+// User activation is performed via a token sent via email.
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
@@ -19,7 +22,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	user, keys, token, err := app.users.RegisterUser(r.Context(), input.Name, input.Email, input.Password)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
@@ -40,18 +43,21 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	app.sendJSON(w, r, http.StatusOK, env{"user": user, "keys": keys}, nil)
 }
 
+// Activate the user using the provided activation token.
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
 	user, err := app.users.ActivateUser(r.Context(), token)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"user": user}, nil)
 }
 
+// Start the process of main auth key recovery. The user is authenticated via email and
+// password and a token is sent via email.
 func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Email    string `json:"email"`
@@ -66,7 +72,7 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 
 	plainToken, err := app.users.GenKeyRecoveryToken(r.Context(), input.Email, input.Password)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
@@ -79,33 +85,35 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 		err = app.mailer.Send(input.Email, "recover_key.gohtml", mailData)
 		if err != nil {
 			app.logger.Errorf("sending recover key mail", "err", err)
-		} else {
-			app.logger.Infof("recover key mail sent")
+			return
 		}
+		app.logger.Infof("recover key mail sent")
 	})
 
 	app.sendJSON(w, r, http.StatusOK, env{
-		"message": "you will receive an email with instructions to regenerate main keys",
+		"message": "you will receive an email with instructions to regenerate the main auth key",
 	}, nil)
 }
 
+// Regenerate the main auth key using the token provided to the user in the
+// handler immediately above.
 func (app *application) recoverKeyHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
-	key, err := app.users.RecoverMainKey(r.Context(), token)
+	key, err := app.users.RegenerateMainKey(r.Context(), token)
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
 	app.sendJSON(w, r, http.StatusOK, env{"keys": key}, nil)
 }
 
+// Retrieve information about the user authenticated, namely, itself.
 func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Request) {
-
 	authData, err := app.users.GetMe(r.Context())
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
@@ -116,10 +124,11 @@ func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Req
 	}, nil)
 }
 
+// Retrieve usage statistics about the user authenticated.
 func (app *application) getUserStatsHandler(w http.ResponseWriter, r *http.Request) {
 	stats, err := app.users.GetStats(r.Context())
 	if err != nil {
-		app.encodeError(w, r, err)
+		app.errorResponse(w, r, err)
 		return
 	}
 
