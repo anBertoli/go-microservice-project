@@ -142,6 +142,7 @@ func (us *UsersStore) Update(user User) (User, error) {
 		SET name = $1, email = $2, password_hash = $3, activated = $4, updated_at = now(), version = version + 1 WHERE id = $5 AND version = $6
 		RETURNING version, updated_at
 	`, user.Name, user.Email, user.PasswordHash, user.Activated, user.ID, user.Version)
+
 	if err != nil {
 		switch {
 		// We can detect if a user with the same

@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/anBertoli/snap-vault/pkg/tracing"
 )
 
 // Register a new user into the system. The user must be activated before using
@@ -27,6 +29,8 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Launch a background goroutine to send the activation email.
+	logger := app.logger.With("id", tracing.TraceFromRequestCtx(r).ID)
+
 	app.background(func() {
 		mailData := map[string]interface{}{
 			"activationToken": token,
@@ -36,8 +40,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.gohtml", mailData)
 		if err != nil {
-			app.logger.Errorf("sending activation mail", "err", err)
+			logger.Errorf("sending activation mail", "err", err)
+			return
 		}
+		logger.Infof("activation mail sent")
 	})
 
 	app.sendJSON(w, r, http.StatusOK, env{"user": user, "keys": keys}, nil)
@@ -77,6 +83,8 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Launch a background goroutine to send the recover token email.
+	logger := app.logger.With("id", tracing.TraceFromRequestCtx(r).ID)
+
 	app.background(func() {
 		mailData := map[string]interface{}{
 			"recoverToken": plainToken,
@@ -84,7 +92,7 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 		}
 		err = app.mailer.Send(input.Email, "recover_key.gohtml", mailData)
 		if err != nil {
-			app.logger.Errorf("sending recover key mail", "err", err)
+			logger.Errorf("sending recover key mail", "err", err)
 			return
 		}
 		app.logger.Infof("recover key mail sent")

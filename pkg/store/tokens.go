@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Define the scopedof the tokens used in the application.
+// Define the scope of the tokens used in the application.
 const (
 	ScopeActivation      = "activation"
 	ScopeRecoverMainKeys = "recover-main-key"
@@ -44,7 +44,7 @@ func (m *TokenStore) New(userID int64, ttl time.Duration, scope string) (Token, 
 		UserID: userID,
 	}
 
-	err = m.Insert(token)
+	token, err = m.Insert(token)
 	if err != nil {
 		return Token{}, err
 	}
@@ -53,16 +53,21 @@ func (m *TokenStore) New(userID int64, ttl time.Duration, scope string) (Token, 
 
 // Insert a new token into the database. The plain text version of the token
 // is not saved.
-func (m *TokenStore) Insert(token Token) error {
+func (m *TokenStore) Insert(token Token) (Token, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	return m.DB.GetContext(ctx, &token, `
+	err := m.DB.GetContext(ctx, &token, `
 		INSERT INTO tokens (hash, user_id, expiry, scope) 
 		VALUES ($1, $2, $3, $4)
 		RETURNING created_at
 	`, token.Hash, token.UserID, token.Expiry, token.Scope)
+	if err != nil {
+		return Token{}, err
+	}
+
+	return token, nil
 }
 
 // Delete all tokens with the given scope for the specified user.

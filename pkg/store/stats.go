@@ -69,7 +69,6 @@ func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_images = n_images + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
-		RETURNING version, updated_at
 	`, n, time.Now().UTC(), userID, stats.Version)
 	if err != nil {
 		return err
@@ -82,6 +81,7 @@ func (ss *StatsStore) IncrementImages(userID int64, n int) error {
 	if rn == 0 {
 		return ErrRecordNotFound
 	}
+
 	return nil
 }
 
@@ -98,7 +98,6 @@ func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_bytes = n_bytes + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
-		RETURNING version, updated_at
 	`, n, time.Now().UTC(), userID, stats.Version)
 	if err != nil {
 		return err
@@ -111,6 +110,7 @@ func (ss *StatsStore) IncrementBytes(userID, n int64) error {
 	if rn == 0 {
 		return ErrRecordNotFound
 	}
+
 	return nil
 }
 
@@ -127,7 +127,6 @@ func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 	res, err := ss.DB.ExecContext(ctx, ` 
 		UPDATE stats
 		SET n_galleries = n_galleries + $1, updated_at = $2, version = version + 1 WHERE user_id = $3 AND version = $4
-		RETURNING version, updated_at
 	`, n, time.Now().UTC(), userID, stats.Version)
 	if err != nil {
 		return err
@@ -140,5 +139,6 @@ func (ss *StatsStore) IncrementGalleries(userID int64, n int) error {
 	if rn == 0 {
 		return ErrRecordNotFound
 	}
+
 	return nil
 }
