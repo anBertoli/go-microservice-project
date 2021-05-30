@@ -10,12 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Define a new migrate command in our CLI.
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "convenient golang-migrate wrapper to migrate PG database",
 	Run:   execMigrateCmd,
 }
 
+// Register the command to the main command of the CLI.
 func initMigrateCmd() {
 	flags := migrateCmd.Flags()
 	flags.String("database-url", "postgres://localhost:5432/snapvault?sslmode=disable", "database url (ex: postgres://localhost:5432/database?sslmode=disable)")
@@ -25,6 +27,7 @@ func initMigrateCmd() {
 	rootCmd.AddCommand(migrateCmd)
 }
 
+// Execute the logic of the migrate command.
 func execMigrateCmd(cmd *cobra.Command, args []string) {
 	folder, err := cmd.Flags().GetString("migrations-folder")
 	if err != nil {

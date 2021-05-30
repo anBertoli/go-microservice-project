@@ -19,12 +19,14 @@ import (
 )
 
 func main() {
-	// Obtain the configuration parsed from the config file.
+	// Obtain the configuration parsed from the config file. If only the version
+	// is asked, print it and exit immediately.
 	cfg, err := parseConfig()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 	if cfg.DisplayVersion {
 		fmt.Printf("API version: %s\n", version)
 		return

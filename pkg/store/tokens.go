@@ -11,7 +11,6 @@ import (
 const (
 	ScopeActivation      = "activation"
 	ScopeRecoverMainKeys = "recover-main-key"
-	ScopeRecoverPassword = "recover-password"
 )
 
 type Token struct {

@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+// Define the root command of the CLI.
 var rootCmd = &cobra.Command{
 	Use:   "snap-cli",
 	Short: "Snap Vault CLI",
@@ -12,8 +13,10 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	// Register the migrate command.
 	initMigrateCmd()
 
+	// Start parsing the command line arguments and execute the appropriate command.
 	err := rootCmd.Execute()
 	if err != nil {
 		log.Fatal(err)
