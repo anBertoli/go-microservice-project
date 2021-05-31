@@ -7,7 +7,6 @@ DB_PASSWORD = "snapvault-secret-password"
 
 .PHONY: run build build-linux build-mac clean remote/provisioning remote/deploy cloc
 
-# If you want,it’s possible to suppress commands from being echoed by prefixing them with the @ character.
 run:
 	go run ./cmd/api
 
