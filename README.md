@@ -53,18 +53,72 @@ In practice, services of this project are modeled as concrete implementations of
 domain area (users, galleries and so on). Service middlewares also satisfy the same interface, so they can be chained 
 together and with the core service to provide additional functionalities.
 
-The following code puts in practice the concept. First of all we define an abstract interface for our service.
+The following code snippets puts in practice the concept. It is only a trivial example, but it could help to grasp 
+the idea. 
+
+First of all we define an abstract interface for our service.
+
 ```go
 package hotel
 
-// Define a service interface
+// Define a service interface and an helper type.
 type Service interface { 
-    BookRoom(ctx context.Context, userID, roomID int) (int, error)
-    UpdateBooking(ctx context.Context, reservationID int) error
-    DeleteBooking(ctx context.Context, reservationID int) error
+    BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error)
+    UpdateReservation(ctx context.Context, reservationID int64, people int) error
+    DeleteReservation(ctx context.Context, reservationID int64, people int) error
     ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error
 }
 
+type Reservation struct {
+    ID      int64
+    UserID  int64
+    RoomID  int64
+    Price   int
+    People  int
+}
 ```
+
+Then we provide at least one concrete implementation of the interface, here we hypothetically save the data in a 
+database, and we contact some payment service.
+
+```go
+package hotel
  
+// Define a struct that holds shared dependencies...
+type SimpleService struct {
+    Store         store.Models
+    Logger        log.Logger
+    BankEndpoint  string
+}
+
+// ... and make sure it implements the Service interface.
+
+func (ss *SimpleService) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
+    // Reserve the room for the user and return back reservation data. In practice, insert a  
+    // reservation into the database. 
+    // ...
+}
+
+func (ss *SimpleService) UpdateReservation(ctx context.Context, reservationID int64, people int) error {
+    // Update the number of people for the reservation, making sure the room has enough space. 
+    // In practice, update the reservation in the database. 
+    // ...
+}
+
+func (ss *SimpleService) DeleteReservation(ctx context.Context, reservationID int64, people int) error {
+    // Delete an existing reservation identified by the provided ID, the room will be available again. 
+    // In practice, delete the reservation from the database. 
+    // ...
+}
+
+func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error {
+    // Confirm an existing reservation identified by the provided ID and charge the bill the user 
+    // bank account. In practice, update the reservation in the database and contact the payment
+    // service (it could be anyhting from an internal microservice to a third-party service).  
+    // ...
+}
+```
+
+### Transports
+
 
