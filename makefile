@@ -7,9 +7,6 @@ DB_PASSWORD = "snapvault-secret-password"
 
 .PHONY: run build build-linux build-mac clean remote/provisioning remote/deploy cloc
 
-run:
-	go run ./cmd/api
-
 build: build-linux build-mac
 
 build-linux: clean

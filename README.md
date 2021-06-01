@@ -41,19 +41,6 @@ adapter functions.
 
 ----------------- image here
 
-## Binaries
-
-Binaries are scoped under the cmd directory. The API reads the JSON config file location from the `config` flag 
-(defaults to `./conf/api.dev.json`). You can find an example configuration file at `./conf/api.example.json`. This
-file must be edited with valid values before starting the application.
-
-The API could be started with: 
-
-```sh
-go run ./cmd/api -config <path/to/config/file>
-```
-
-
 ## Services
 
 As anticipated above, services implement all the business logic of the application. They are agnostic of the concrete
@@ -285,7 +272,9 @@ We will implement JSON over HTTP adapters to the service defined previously. Thi
 using closures (which return HTTP handlers) or using a struct whose methods are HTTP handlers. The choice
 is not so important. In the Snap Vault project the second approach was followed.
 
-```go 
+```go
+package jsonapi 
+
 // Define a jsonapi struct that holds the core services and some additional deps...
 type jsonapi struct {
     booking booking.Service     // defined above
@@ -403,5 +392,41 @@ extract the auth key from a transport-specific location, i.e. the Authorization 
 This point is debatable, and it is perfectly acceptable to perform authentication in a transport middleware.
 Software engineering involves trade-offs, and valuable exceptions could be made. Note however that DRY code
 is not always a cleaner code.    
+
+
+## Running the binaries
+
+Binaries are scoped under the cmd directory. The API reads the JSON config file location from the `config` flag 
+(defaults to `./conf/api.dev.json`). You can find an example configuration file at `./conf/api.example.json`. This
+file must be edited with valid values before starting the application.
+
+The API could be directly started: 
+
+```shell script
+go run ./cmd/api -config <path/to/config/file>
+```
+
+or it can be compiled:
+
+```shell script
+make build
+./bin/linux/snapvault-cli_<git_desc> -config <path/to/config/file>
+```
+
+Under the cmd directory there is a simple CLI. Currently, it supports only the `migrate` command, but in the future
+it could be extended to support additional features. The migrate command uses the https://github.com/golang-migrate/migrate
+embedded as a library.
+
+```shell script
+go run ./cmd/cli --help # obtain help for the CLI
+
+go run ./cmd/cli migrate --help # obtain help for the migrate command
+
+go run ./cmd/cli migrate \
+  --action up  \
+  --migrations-folder file://<path/to/migrations/folder>  \
+  --database-url  postgres://localhost:5432/database?sslmode=disable
+```
+
 
 ## Deploy
