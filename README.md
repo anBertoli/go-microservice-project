@@ -188,9 +188,11 @@ func (am *AuthMiddleware) BookRoom(ctx context.Context, userID, roomID int64, pe
     return am.Service.BookRoom(ctx, userID, roomID, people)
 }
 
-// Implement UpdateReservation, DeleteReservation and ConfirmAndPay methods. We don't
-// need to implement the ListRooms API.
-// ...
+// Implement other methods. We don't need to implement the ListRooms API.
+func (ss *SimpleService) UpdateReservation(ctx context.Context, reservationID int64, people int) error { /* ... */ }
+func (ss *SimpleService) DeleteReservation(ctx context.Context, reservationID int64, people int) error { /* ... */ }
+func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error { /* ... */ }
+
 ```
 
 Note the following two things.
@@ -320,8 +322,8 @@ router.Methods(http.MethodGet).Path("/booking/rooms").HandlerFunc(api.listRoomsH
 router.Methods(http.MethodPost).Path("/booking/rooms/{id}").HandlerFunc(api.bookRoomHandler)
 router.Methods(http.MethodPut).Path("/booking/rooms/{id}").HandlerFunc(api.updateReservationHandler)
 router.Methods(http.MethodDelete).Path("/booking/rooms/{id}").HandlerFunc(api.deleteReservationHandler)
-router.Methods(http.MethodDelete).Path("/booking/rooms/confirm/{id}").HandlerFunc(api.confirmationHandler)
- 
+router.Methods(http.MethodPost).Path("/booking/rooms/confirm/{id}").HandlerFunc(api.confirmationHandler)
+
 err := http.ListenAndServe("127.0.0.1:4000", router)
 if err != nil {
     log.fatal(err)
@@ -334,5 +336,63 @@ system and so on.
 
 ### Transport middlewares
 
+Transport middlewares are not modelled following an interface since they are tightly coupled with the 
+concrete transport type. For HTTP middlewares there is a well-known pattern to create middlewares.
+
+```go
+func httpMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Do something before serving the request (or the next middleware).
+
+        // Proceed with next handler in the chain.
+        next.ServeHTTP(w, r)
+    
+        // Do something after the request was served.
+	})
+}
+```
+
+The pattern takes advantage of closures to return a wrapped version of the original HTTP handler. It is possible
+to wrap a single endpoint or to the entire HTTP handler passed to the ListenAndServe function. 
+
+```go
+router := mux.NewRouter()
+
+// Apply some middleware to a single endpoint...
+listRoomsHandler := middleware1(api.listRoomsHandler)
+listRoomsHandler = middleware2(listRoomsHandler)
+
+router.Methods(http.MethodGet).Path("/booking/rooms").HandlerFunc(listRoomsHandler)
 
 
+// ... or globally to the resulting HTTP handler.
+handler := middleware3(router)
+handler = middleware4(handler)
+
+err := http.ListenAndServe("127.0.0.1:4000", handler)
+if err != nil {
+    log.fatal(err)
+}
+```
+
+In the Snap Vault codebase several HTTP middlewares were used, all related to HTTP related issues:
+- logging & tracing 
+- rate-limiting
+- CORS authorization
+- auth key extraction
+
+##### A note on authentication 
+
+It is usual to perform authentication in an HTTP middleware, especially if the project doesn't enforce
+the separation between transport and business logic (services). This pattern is not followed for Snap Vault.
+
+The reason is that authentication & authorization are part of the business logic and should be done inside the
+service layer or in a dedicated service middleware. This results in more code (not so much to be honest) but will 
+result in a cleaner code, and a better separation of concerns. The transport middleware is still responsible to 
+extract the auth key from a transport-specific location, i.e. the Authorization header for HTTP requests.
+
+This point is debatable, and it is perfectly acceptable to perform authentication in a transport middleware.
+Software engineering involves trade-offs, and valuable exceptions could be made. Note however that DRY code
+is not always a cleaner code.    
+
+## Deploy
