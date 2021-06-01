@@ -255,7 +255,6 @@ if err != nil {
 }
 ```
 
-
 ## Transports
 
 We defined our services and all related middlewares, now we have to expose th service to the outside.
@@ -379,7 +378,7 @@ In the Snap Vault codebase several HTTP middlewares were used, all related to HT
 - CORS authorization
 - auth key extraction
 
-##### A note on authentication 
+#### A note on authentication 
 
 It is usual to perform authentication in an HTTP middleware, especially if the project doesn't enforce
 the separation between transport and business logic (services). This pattern is not followed for Snap Vault.
@@ -393,6 +392,54 @@ This point is debatable, and it is perfectly acceptable to perform authenticatio
 Software engineering involves trade-offs, and valuable exceptions could be made. Note however that DRY code
 is not always a cleaner code.    
 
+
+## Data persistence
+
+Storing and retrieving data is typically part of the business logic. For simple data manipulation
+it is sufficient to pass a sql.DB pointer to the services concrete implementations. For more than 
+trivial operations you usually want to create a storage package with a concrete Store type. This type
+will hold the concrete db connection pool and provides operations on data implemented as methods. The 
+defined storage type is provided to the services concrete implementations.
+
+```go
+package storage
+
+type Store struct {
+    logger log.Logger
+    db     *sql.DB
+}
+
+func (s *Store) InsertReservation(ctx context.Context, reservation Reservation) error {
+    row := s.db.QueryRow(`
+        INSERT INTO reservation (userID, roomID, people) 
+        VALUES ($1, $2, $3)
+        RETURNING id, created_at
+    `)
+
+    return row.Scan(
+        &reservation.ID, 
+        &reservation.CreatedAt,
+    )
+}
+```
+
+Even better, it is possible to define an interface also for persistence operations. Then a concrete type
+can implement the interface. Each concrete implementation could support a different type of storage, e.g.
+file system, S3, another storage microservice etc. In this case you provide an interface rather than a concrete
+type to your services.
+
+```go
+package storage 
+
+type Store interface {
+	InsertReservation(ctx context.Context, reservation Reservation) error
+	UpdateReservation(id reservation Reservation) error
+	// ... other methods
+}
+```
+
+Anyway, this type of abstraction could be an overkill especially if each concrete service use only one
+concrete type of storage. In this case it is ok to use only concrete store types. 
 
 ## Running the binaries
 
