@@ -409,16 +409,16 @@ type Store struct {
     db     *sql.DB
 }
 
-func (s *Store) InsertReservation(ctx context.Context, reservation Reservation) error {
+func (s *Store) InsertReservation(ctx context.Context, res Reservation) error {
     row := s.db.QueryRow(`
         INSERT INTO reservation (userID, roomID, people) 
         VALUES ($1, $2, $3)
         RETURNING id, created_at
-    `)
+    `, res.UserID, res.RoomID, res.People)
 
     return row.Scan(
-        &reservation.ID, 
-        &reservation.CreatedAt,
+        &res.ID, 
+        &res.CreatedAt,
     )
 }
 ```
