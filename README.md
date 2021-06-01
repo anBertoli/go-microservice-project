@@ -20,8 +20,8 @@ The architectural pattern used in this project is influenced by the hexagonal ar
 among several things, that the business logic should have no knowledge of transport-related concepts. Your core 
 services shouldn’t know anything about HTTP headers, gRPC error codes or any other adapter used to expose them 
 to the world. Applying the principle to the Go language, Go-kit was inspirational about this. I suggest taking
-a look at it at https://gokit.io/. However, I decided to drastically reduce the boilerplate and the complexity of
-go-kit by not following exactly the same patterns used there.
+a look at it at https://gokit.io/. However, I decided to drastically reduce the complexity of go-kit by not following 
+exactly the same patterns used there.
 
 The project is laid out in two layers.
 
@@ -35,14 +35,14 @@ is exposed in a single transport endpoint. Services shouldn't have any knowledge
 Both the layers could be wrapped with middlewares to add functionality, such as logging, rate limiting, 
 metrics, authentication and so on. It’s common to chain multiple middlewares around an endpoint or service. 
 
-The two layers division and the middleware (decorator) pattern enforce a more strict separation of concerns and 
-help to reuse (business-logic) code when needed. Adding a new transport for your services will be just a matter 
-of writing some adapter functions. 
+The division in two layers and the middleware (decorator) pattern enforce a more strict separation of concerns and 
+allows us to reuse code when needed. Adding a new transport for your services will be just a matter of writing some 
+adapter functions. 
 
 
 ----------------- image here
 
-### Services
+## Services
 
 As anticipated above, services implement all the business logic of the application. They are agnostic of the concrete
 transport method used to expose them to the world. In other words, you can reuse the same service to provide similar 
@@ -164,6 +164,11 @@ type AuthMiddleware struct {
     Authenticator auth.Auther
     Service 
 }
+var (
+    ErrUnauthenticated = errors.New("unauthenticated")
+    ErrForbidden = errors.New("forbidden")
+)
+
 
 // The pattern is the same for each method: extract the auth token from the context
 // authenticate the user and make sure it has the necessary permissions. Return
@@ -172,12 +177,12 @@ type AuthMiddleware struct {
 func (am *AuthMiddleware) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
     authData, err := am.Authenticator.Auth(ctx)
     if err != nil {
-        return Reservation{}, errors.New("unauthenticated")
+        return Reservation{}, ErrUnauthenticated
     }
 
     isAllowed := checkPermissions(authData.Permissions, "book-room-perm")
     if !isAllowed {
-         return Reservation{}, errors.New("forbidden")
+         return Reservation{}, ErrForbidden
     }
 
     return am.Service.BookRoom(ctx, userID, roomID, people)
@@ -274,6 +279,7 @@ if err != nil {
 ```
 
 
-### Transports
+## Transports
 
+We defined our services and all related middlewares, now we have to expose th service to the outside.
 
