@@ -61,9 +61,9 @@ First of all we define an abstract interface for our service.
 ```go
 package booking
 
-// Define a service interface and an helper type.
+// Define a service interface and some helper types.
 type Service interface {
-    ListRooms(ctx context.Context) ([]Room, error)
+    ListRooms(ctx context.Context, page int) ([]Room, error)
     BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error)
     UpdateReservation(ctx context.Context, reservationID int64, people int) error
     DeleteReservation(ctx context.Context, reservationID int64, people int) error
@@ -100,7 +100,7 @@ type SimpleService struct {
 
 // ... and make sure it implements the Service interface.
 
-func (ss *SimpleService) ListRooms(ctx context.Context) ([]Room, error) {
+func (ss *SimpleService) ListRooms(ctx context.Context, page int) ([]Room, error) {
     // List available rooms, retrieving data from the database.
     // ...
 }
@@ -188,17 +188,9 @@ func (am *AuthMiddleware) BookRoom(ctx context.Context, userID, roomID int64, pe
     return am.Service.BookRoom(ctx, userID, roomID, people)
 }
 
-func (am *AuthMiddleware) UpdateReservation(ctx context.Context, reservationID int64, people int) error {
-    // ...
-}
-
-func (am *AuthMiddleware) DeleteReservation(ctx context.Context, reservationID int64, people int) error {
-    // ...
-}
-
-func (am *AuthMiddleware) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error {
-    // ...
-}
+// Implement UpdateReservation, DeleteReservation and ConfirmAndPay methods. We don't
+// need to implement the ListRooms API.
+// ...
 ```
 
 Note the following two things.
@@ -229,7 +221,7 @@ func NewMetricsMiddleware(m metrics.Recorder, next Service) *MetricsMiddleware {
     }
 }
 
-func (mm *MetricsMiddleware) ListRooms(ctx context.Context) ([]Room, error) {
+func (mm *MetricsMiddleware) ListRooms(ctx context.Context, page int) ([]Room, error) {
     // Defer a function which records the time took by the API
     // to process the request.
     defer func(start time.Time) {
@@ -240,24 +232,11 @@ func (mm *MetricsMiddleware) ListRooms(ctx context.Context) ([]Room, error) {
     mm.Metrics.Add("list-rooms", 1)
     
     // Call the core service.
-    mm.Service.ListRooms(ctx)
+    return mm.Service.ListRooms(ctx, page)
 }
 
-func (mm *MetricsMiddleware) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
-    // Record metrics related to the BookRoom API...
-}
-
-func (mm *MetricsMiddleware) UpdateReservation(ctx context.Context, reservationID int64, people int) error {    
-    // Record metrics related to the UpdateReservation API...
-}
-
-func (mm *MetricsMiddleware) DeleteReservation(ctx context.Context, reservationID int64, people int) error {
-    // Record metrics related to the DeleteReservation API...
-}
-
-func (mm *MetricsMiddleware) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error {
-    // Record metrics related to the ConfirmAndPay API...
-}
+// Implement all other methods.
+// ...
 ``` 
 
 Finally, we can wire everything together, typically in our main function. The order of the middlewares
@@ -284,6 +263,76 @@ if err != nil {
 We defined our services and all related middlewares, now we have to expose th service to the outside.
 The transport layer is related to concrete transports like JSON over HTTP or gRPC. No business logic
 should be implemented here.
+
+Each type of transport has its own peculiarities and nuances, but all implementation follow this pattern:
+- a handler is defined for each service API (not strictly rule)
+- the handler collects/extracts relevant data from the request
+- the handler pass the collected data to the relevant service
+- the returned output is sent to the client  
+
+We will implement JSON over HTTP adapters to the service defined previously. This layer can be modelled 
+using closures (which return HTTP handlers) or using a struct whose methods are HTTP handlers. The choice
+is not so important. In the Snap Vault project the second approach was followed.
+
+```go 
+// Define a jsonapi struct that holds the core services and some additional deps...
+type jsonapi struct {
+    booking booking.Service     // defined above
+    users   users.Service       
+    mailer  mailer.Mailer
+    logger  log.Logger
+}
+
+// ... then in the same package define the HTTP handlers.
+
+func (j *jsonapi) listRoomsHandler(w http.ResponseWriter, r *http.Request) {
+    query := r.URL.Query()
+    page, err := strconv.Atoi(query.Get("page"))
+    if err != nil {
+        page = 0
+    }
+
+    rooms, err := j.booking.ListRooms(r.Context(), page)
+    if err != nil {
+        // Handle the error appropriately.
+        return
+    }
+
+    roomsBytes, err := json.Marshal(rooms)
+    if err != nil {
+        // Handle the error appropriately.
+        return
+    }
+    w.Write(roomsBytes)
+}
+
+// Other HTTP handlers implementations.
+// ...
+```
+
+The last step is to register our routes and start the server. You can use the routing strategy 
+you want, here I used the mux router.
+
+```go
+router := mux.NewRouter()
+
+router.Methods(http.MethodGet).Path("/booking/rooms").HandlerFunc(api.listRoomsHandler)
+router.Methods(http.MethodPost).Path("/booking/rooms/{id}").HandlerFunc(api.bookRoomHandler)
+router.Methods(http.MethodPut).Path("/booking/rooms/{id}").HandlerFunc(api.updateReservationHandler)
+router.Methods(http.MethodDelete).Path("/booking/rooms/{id}").HandlerFunc(api.deleteReservationHandler)
+router.Methods(http.MethodDelete).Path("/booking/rooms/confirm/{id}").HandlerFunc(api.confirmationHandler)
+ 
+err := http.ListenAndServe("127.0.0.1:4000", router)
+if err != nil {
+    log.fatal(err)
+}
+```
+
+In the same way we can define transport-specific adapters for a gRPC server, for a CLI, for a SQS polling
+system and so on. 
+
+
+### Transport middlewares
 
 
 
