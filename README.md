@@ -26,7 +26,7 @@ exactly the same patterns used there.
 The project is laid out in two layers.
 
 1. Transport layer. The transport layer is bound to concrete transports like HTTP or gRPC. No business logic
-is implemented here, the goal of this layer is to expose your services to the world creating transport specific 
+is implemented here, the goal of this layer is to expose your services to the world by creating transport specific 
 adapters, like for HTTP, RPC, CLI, events, etc.
 
 2. Service layer. This layer is where all of the business logic is implemented. Tipically, each service method
@@ -260,7 +260,7 @@ func (mm *MetricsMiddleware) ConfirmAndPay(ctx context.Context, reservationID in
 }
 ``` 
 
-Finally we can wire everything together, typically in our main function. The order of the middlewares
+Finally, we can wire everything together, typically in our main function. The order of the middlewares
 could be changed based on your specific needs.
 
 ```go
@@ -282,4 +282,8 @@ if err != nil {
 ## Transports
 
 We defined our services and all related middlewares, now we have to expose th service to the outside.
+The transport layer is related to concrete transports like JSON over HTTP or gRPC. No business logic
+should be implemented here.
+
+
 
