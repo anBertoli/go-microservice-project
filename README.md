@@ -39,8 +39,20 @@ The division in two layers and the middleware (decorator) pattern enforce a more
 allows us to reuse code when needed. Adding a new transport for your services will be just a matter of writing some 
 adapter functions. 
 
-
 ----------------- image here
+
+## Binaries
+
+Binaries are scoped under the cmd directory. The API reads the JSON config file location from the `config` flag 
+(defaults to `./conf/api.dev.json`). You can find an example configuration file at `./conf/api.example.json`. This
+file must be edited with valid values before starting the application.
+
+The API could be started with: 
+
+```sh
+go run ./cmd/api -config <path/to/config/file>
+```
+
 
 ## Services
 
@@ -189,10 +201,7 @@ func (am *AuthMiddleware) BookRoom(ctx context.Context, userID, roomID int64, pe
 }
 
 // Implement other methods. We don't need to implement the ListRooms API.
-func (ss *SimpleService) UpdateReservation(ctx context.Context, reservationID int64, people int) error { /* ... */ }
-func (ss *SimpleService) DeleteReservation(ctx context.Context, reservationID int64, people int) error { /* ... */ }
-func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error { /* ... */ }
-
+// ...
 ```
 
 Note the following two things.
