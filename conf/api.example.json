@@ -14,6 +14,9 @@
     "rps": 50,
     "burst": 100
   },
+  "metrics": {
+    "prometheus-endpoint": "/metrics"
+  },
   "smtp": {
     "host": "<smtp-host>",
     "port": 25,

@@ -116,7 +116,7 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Type": []string{image.ContentType},
 		})
 	case attachmentMode:
@@ -125,7 +125,7 @@ func (app *application) getPublicImageHandler(w http.ResponseWriter, r *http.Req
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
 			"Content-Type":        []string{image.ContentType},
 		})
@@ -158,7 +158,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Type": []string{image.ContentType},
 		})
 	case attachmentMode:
@@ -167,7 +167,7 @@ func (app *application) getImageHandler(w http.ResponseWriter, r *http.Request) 
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"%s\"", image.Title)},
 			"Content-Type":        []string{image.ContentType},
 		})

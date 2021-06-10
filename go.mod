@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.3
 	github.com/lib/pq v1.10.1
+	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cobra v1.1.3
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210503195802-e9a32991a82e

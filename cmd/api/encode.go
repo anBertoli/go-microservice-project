@@ -18,13 +18,12 @@ type env map[string]interface{}
 // writeJSON function.
 func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status int, data env, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
-	trace.HttpStatus = status
-	trace.PrivateErr = nil
+	trace.HttpCode = status
 
 	err := writeJSON(w, status, data, headers)
 	if err != nil {
 		app.logger.Errorw("sending json", "id", trace.ID, "err", err)
-		trace.HttpStatus = http.StatusInternalServerError
+		trace.HttpCode = http.StatusInternalServerError
 		trace.PrivateErr = err
 	}
 }
@@ -33,8 +32,8 @@ func (app *application) sendJSON(w http.ResponseWriter, r *http.Request, status 
 // to the client, after recording some tracing data.
 func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, resp errResponse) {
 	trace := tracing.TraceFromRequestCtx(r)
-	trace.HttpStatus = resp.status
-	trace.PubMessage = resp.message
+	trace.HttpCode = resp.status
+	trace.PublicErr = resp.message
 	trace.PrivateErr = resp.err
 
 	err := writeJSON(w, resp.status, env{
@@ -44,7 +43,7 @@ func (app *application) sendJSONError(w http.ResponseWriter, r *http.Request, re
 
 	if err != nil {
 		app.logger.Errorw("sending json", "id", trace.ID, "err", err)
-		trace.HttpStatus = http.StatusInternalServerError
+		trace.HttpCode = http.StatusInternalServerError
 		trace.PrivateErr = err
 	}
 }
@@ -85,10 +84,9 @@ func writeJSON(w http.ResponseWriter, status int, data env, headers http.Header)
 // The streamBytes function is a helper function used to send binary data to the client.
 // The data is extracted from a reader, which if it's also a closer it will be closed
 // after reading all the content.
-func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, reader io.Reader, headers http.Header) {
+func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, status int, reader io.Reader, headers http.Header) {
 	trace := tracing.TraceFromRequestCtx(r)
-	trace.HttpStatus = http.StatusOK
-	trace.PrivateErr = nil
+	trace.HttpCode = status
 
 	logger := app.logger.With("id", trace.ID)
 
@@ -104,7 +102,9 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 		}()
 	}
 
-	// Add the headers to the response.
+	// Write the status code and the headers to the response.
+	w.WriteHeader(status)
+
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
@@ -125,7 +125,7 @@ func (app *application) streamBytes(w http.ResponseWriter, r *http.Request, read
 			logger.Errorw("streaming bytes", "err", err)
 		}
 
-		trace.HttpStatus = http.StatusInternalServerError
+		trace.HttpCode = http.StatusInternalServerError
 		trace.PrivateErr = err
 	}
 }

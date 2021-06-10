@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/anBertoli/snap-vault/pkg/mailer"
@@ -72,6 +73,8 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodGet).Path("/v1/healthcheck").HandlerFunc(app.healthcheckHandler)
 	router.Methods(http.MethodGet).Path("/v1/permissions").HandlerFunc(app.listPermissionsHandler)
 
+	router.Methods(http.MethodGet).Path("/metrics").Handler(promhttp.Handler())
+
 	router.NotFoundHandler = http.HandlerFunc(app.routeNotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedHandler)
 
@@ -81,8 +84,9 @@ func (app *application) handler() http.Handler {
 	// the rate limiting threshold reached.
 	handler := app.extractAuthKey(router)
 	handler = app.rateLimit(handler)
-	handler = app.enableCORS(handler)
 	handler = app.logging(handler)
+	handler = app.metrics(handler)
+	handler = app.enableCORS(handler)
 	return handler
 }
 

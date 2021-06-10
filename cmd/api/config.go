@@ -29,6 +29,9 @@ type config struct {
 		Rps     float64 `json:"rps"`
 		Burst   int     `json:"burst"`
 	} `json:"rate-limit"`
+	Metrics struct {
+		PromEndpoint string `json:"prometheus-endpoint"`
+	} `json:"metrics"`
 	Smtp struct {
 		Host     string `json:"host"`
 		Port     int    `json:"port"`

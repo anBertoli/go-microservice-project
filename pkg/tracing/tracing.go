@@ -23,13 +23,13 @@ const requestTraceKey privateKey = "requestTrace"
 type RequestTrace struct {
 	ID         string
 	Start      time.Time
-	HttpStatus int
-	PubMessage interface{}
+	HttpCode   int
+	PublicErr  interface{}
 	PrivateErr error
 }
 
 // Enrich the HTTP request with a newly initialized trace.
-func NewTraceToRequest(r *http.Request) *http.Request {
+func NewRequestWithTrace(r *http.Request) *http.Request {
 	trace := RequestTrace{
 		ID:    genRequestID(25),
 		Start: time.Now().UTC(),

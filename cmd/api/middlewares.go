@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 
 	"github.com/anBertoli/snap-vault/pkg/auth"
@@ -54,21 +56,36 @@ func (app *application) extractAuthKey(next http.Handler) http.Handler {
 	})
 }
 
+//
+var tracingFnApplied bool
+
+func (app *application) tracing(next http.Handler) http.Handler {
+	if tracingFnApplied {
+		return next
+	}
+
+	tracingFnApplied = true
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = tracing.NewRequestWithTrace(r)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // The logging middleware is used to log incoming requests and related outgoing responses.
 // Before passing the control to the next http handler the incoming request is logged.
 // Another log is emitted for outgoing responses, using the (possibly) enriched
 // request trace.
 func (app *application) logging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// Create a request trace, and put it into the request context. Note that a
-		// pointer is used, so functions that retrieve the trace could simply modify
-		// in place the value pointed to.
-		r = tracing.NewTraceToRequest(r)
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestTrace := tracing.TraceFromRequestCtx(r)
 
 		// Perform the first log about the incoming request.
-		ip, _ := realIP(r)
+		ip, err := realIP(r)
+		if err != nil {
+			app.logger.Errorf("retrieving real IP", "id", requestTrace.ID)
+		}
+
 		app.logger.Infow("incoming request",
 			"id", requestTrace.ID,
 			"start_time", requestTrace.Start,
@@ -78,25 +95,25 @@ func (app *application) logging(next http.Handler) http.Handler {
 			"method", r.Method,
 		)
 
-		// Serve the request.
+		// Pass the request to the next handler.
 		next.ServeHTTP(w, r)
 
 		// After the request handling produce another log. Note that some values could not
 		// be present since is the responsibility of other http handlers to enrich the
-		// trace, but this is not mandatory. Logs are produced with different severity
-		// based on the HTTP code of the response.
+		// trace, even if this is not mandatory. Logs are produced with different
+		// severity based on the HTTP code of the response.
 		end := time.Now().UTC()
 		fields := []interface{}{
 			"id", requestTrace.ID,
-			"http_status", requestTrace.HttpStatus,
+			"http_code", requestTrace.HttpCode,
 			"end_time", end,
 			"duration", end.Sub(requestTrace.Start),
 		}
 		if requestTrace.PrivateErr != nil {
-			fields = append(fields, "err", requestTrace.PrivateErr)
+			fields = append(fields, "private_err", requestTrace.PrivateErr)
 		}
 
-		switch requestTrace.HttpStatus / 100 {
+		switch requestTrace.HttpCode / 100 {
 		case 0, 1, 2, 3:
 			app.logger.Infow("request completed", fields...)
 		case 4:
@@ -104,8 +121,47 @@ func (app *application) logging(next http.Handler) http.Handler {
 		case 5:
 			app.logger.Errorw("request error", fields...)
 		}
-
 	})
+
+	return app.tracing(fn)
+}
+
+func (app *application) metrics(next http.Handler) http.Handler {
+
+	requestCount := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "api_http_request",
+			Help: "Counter of HTTP requests.",
+		},
+		[]string{"path", "code"},
+	)
+	if err := prometheus.Register(requestCount); err != nil {
+		panic(err)
+	}
+
+	requestsLatency := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "api_http_requests_duration_milliseconds",
+			Help:    "Histogram of latencies for HTTP requests",
+			Buckets: []float64{0.1, 1, 10, 100, 250, 500, 1000, 2500, 5000, 10000},
+		},
+		[]string{"path"},
+	)
+	if err := prometheus.Register(requestsLatency); err != nil {
+		panic(err)
+	}
+
+	return app.tracing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestTrace := tracing.TraceFromRequestCtx(r)
+
+		next.ServeHTTP(w, r)
+
+		path := r.URL.Path
+		if path != app.config.Metrics.PromEndpoint {
+			requestCount.WithLabelValues(path, fmt.Sprintf("%d", requestTrace.HttpCode)).Inc()
+			requestsLatency.WithLabelValues(path).Observe(float64(time.Since(requestTrace.Start).Milliseconds()))
+		}
+	}))
 }
 
 // This middleware is a wrapper around the two possibles rate-limiting middlewares.
@@ -276,7 +332,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 				// For preflight requests we must authorize non-CORS safe headers and HTTP methods
 				// not allowed for simple CORS requests. Also the 'Access-Control-Allow-Origin' is
 				// vital for preflight requests, but we have already set it previously.
-				w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+				w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, PATCH, DELETE")
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 				w.WriteHeader(http.StatusOK)
 				return

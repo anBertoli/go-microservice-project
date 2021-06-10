@@ -76,7 +76,7 @@ func (app *application) getPublicGalleryHandler(w http.ResponseWriter, r *http.R
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
 		})
 	case dataMode:
@@ -111,7 +111,7 @@ func (app *application) getGalleryHandler(w http.ResponseWriter, r *http.Request
 			app.errorResponse(w, r, err)
 			return
 		}
-		app.streamBytes(w, r, readCloser, http.Header{
+		app.streamBytes(w, r, http.StatusOK, readCloser, http.Header{
 			"Content-Disposition": []string{fmt.Sprintf("attachment; filename=\"gallery_%s.tar.gz\"", gallery.Title)},
 		})
 	case dataMode:
