@@ -17,7 +17,7 @@ import (
 type privateKey string
 
 // ...and declare a const of that type.
-const requestTraceKey privateKey = "requestTrace"
+const requestTraceKey privateKey = "request-trace"
 
 // Contains several data about the request lifecycle.
 type RequestTrace struct {
@@ -52,9 +52,11 @@ func TraceFromRequestCtx(r *http.Request) *RequestTrace {
 		return trace
 	}
 	return &RequestTrace{
-		ID: "<no request id>",
+		ID: AnonymousID,
 	}
 }
+
+const AnonymousID = "<no request id>"
 
 // Retrieve a trace from a context object. If the context doesn't have any trace
 // return a default request trace with no ID.
@@ -63,7 +65,7 @@ func TraceFromCtx(ctx context.Context) *RequestTrace {
 		return trace
 	}
 	return &RequestTrace{
-		ID: "<no request id>",
+		ID: AnonymousID,
 	}
 }
 

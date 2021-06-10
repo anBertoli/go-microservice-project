@@ -15,7 +15,10 @@
     "burst": 100
   },
   "metrics": {
-    "prometheus-endpoint": "/metrics"
+    "metrics-endpoint": "/metrics",
+    "allowed-ips": [
+      "127.0.0.1"
+    ]
   },
   "smtp": {
     "host": "<smtp-host>",

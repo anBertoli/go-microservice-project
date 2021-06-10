@@ -57,16 +57,12 @@ func (app *application) extractAuthKey(next http.Handler) http.Handler {
 }
 
 //
-var tracingFnApplied bool
-
 func (app *application) tracing(next http.Handler) http.Handler {
-	if tracingFnApplied {
-		return next
-	}
-
-	tracingFnApplied = true
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = tracing.NewRequestWithTrace(r)
+		reqTrace := tracing.TraceFromRequestCtx(r)
+		if reqTrace.ID == tracing.AnonymousID {
+			r = tracing.NewRequestWithTrace(r)
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -153,11 +149,10 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 	return app.tracing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestTrace := tracing.TraceFromRequestCtx(r)
-
 		next.ServeHTTP(w, r)
 
 		path := r.URL.Path
-		if path != app.config.Metrics.PromEndpoint {
+		if path != app.config.Metrics.MetricsEndpoint {
 			requestCount.WithLabelValues(path, fmt.Sprintf("%d", requestTrace.HttpCode)).Inc()
 			requestsLatency.WithLabelValues(path).Observe(float64(time.Since(requestTrace.Start).Milliseconds()))
 		}
@@ -341,6 +336,34 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (app *application) allowIPs(next http.Handler, allowedIPs []string) http.HandlerFunc {
+
+	for i, ip := range allowedIPs {
+		ip := net.ParseIP(ip)
+		if ip == nil {
+			panic(ip)
+		}
+		allowedIPs[i] = ip.String()
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		remoteHost, err := realIP(r)
+		if err != nil {
+			app.forbiddenResponse(w, r)
+			return
+		}
+
+		for _, ip := range allowedIPs {
+			if ip == remoteHost {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		app.forbiddenResponse(w, r)
+	}
 }
 
 func realIP(r *http.Request) (string, error) {

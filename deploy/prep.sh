@@ -102,3 +102,15 @@ cp /root/deploy/nginx_conf/nginx.service /lib/systemd/system/nginx.service
 systemctl enable nginx
 systemctl start nginx
 
+############### PROMETHEUS ###############
+cd $WORK_DIR
+
+wget -O ./prometheus-2.27.1.tar.gz https://github.com/prometheus/prometheus/releases/download/v2.27.1/prometheus-2.27.1.linux-amd64.tar.gz
+tar -zxvf prometheus-2.27.1.tar.gz
+
+cp prometheus-2.27.1.linux-amd64/prometheus /usr/local/bin/prometheus
+
+############### PROMETHEUS (SYSTEMD UNIT) ###############
+cp /root/deploy/prom_conf/prometheus.service /lib/systemd/system/prometheus.service
+systemctl enable prometheus
+systemctl start prometheus

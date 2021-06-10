@@ -73,7 +73,8 @@ func (app *application) handler() http.Handler {
 	router.Methods(http.MethodGet).Path("/v1/healthcheck").HandlerFunc(app.healthcheckHandler)
 	router.Methods(http.MethodGet).Path("/v1/permissions").HandlerFunc(app.listPermissionsHandler)
 
-	router.Methods(http.MethodGet).Path("/metrics").Handler(promhttp.Handler())
+	metricsHandler := app.allowIPs(promhttp.Handler(), app.config.Metrics.AllowedIps)
+	router.Methods(http.MethodGet).Path(app.config.Metrics.MetricsEndpoint).Handler(metricsHandler)
 
 	router.NotFoundHandler = http.HandlerFunc(app.routeNotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedHandler)
