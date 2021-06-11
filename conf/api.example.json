@@ -15,10 +15,7 @@
     "burst": 100
   },
   "metrics": {
-    "metrics-endpoint": "/metrics",
-    "allowed-ips": [
-      "127.0.0.1"
-    ]
+    "metrics-endpoint": "/metrics"
   },
   "smtp": {
     "host": "<smtp-host>",

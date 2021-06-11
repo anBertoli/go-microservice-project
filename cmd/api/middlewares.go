@@ -338,34 +338,6 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) allowIPs(next http.Handler, allowedIPs []string) http.HandlerFunc {
-
-	for i, ip := range allowedIPs {
-		ip := net.ParseIP(ip)
-		if ip == nil {
-			panic(ip)
-		}
-		allowedIPs[i] = ip.String()
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		remoteHost, err := realIP(r)
-		if err != nil {
-			app.forbiddenResponse(w, r)
-			return
-		}
-
-		for _, ip := range allowedIPs {
-			if ip == remoteHost {
-				next.ServeHTTP(w, r)
-				return
-			}
-		}
-
-		app.forbiddenResponse(w, r)
-	}
-}
-
 func realIP(r *http.Request) (string, error) {
 	addr := r.Header.Get("X-Real-Ip")
 	if addr == "" {

@@ -30,8 +30,7 @@ type config struct {
 		Burst   int     `json:"burst"`
 	} `json:"rate-limit"`
 	Metrics struct {
-		MetricsEndpoint string   `json:"metrics-endpoint"`
-		AllowedIps      []string `json:"allowed-ips"`
+		MetricsEndpoint string `json:"metrics-endpoint"`
 	} `json:"metrics"`
 	Smtp struct {
 		Host     string `json:"host"`
