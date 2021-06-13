@@ -56,7 +56,8 @@ func (app *application) extractAuthKey(next http.Handler) http.Handler {
 	})
 }
 
-//
+// The tracing middleware puts a request trace into the request context. If a trace is
+// already present the middleware acts as a no-op.
 func (app *application) tracing(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqTrace := tracing.TraceFromRequestCtx(r)
@@ -73,13 +74,18 @@ func (app *application) tracing(next http.Handler) http.Handler {
 // request trace.
 func (app *application) logging(next http.Handler) http.Handler {
 
-	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Wrap the returned middleware in the tracing middleware, that is, before invoking
+	// the function call the tracing function logic.
+	return app.tracing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestTrace := tracing.TraceFromRequestCtx(r)
 
 		// Perform the first log about the incoming request.
 		ip, err := realIP(r)
 		if err != nil {
-			app.logger.Errorf("retrieving real IP", "id", requestTrace.ID)
+			app.logger.Errorw("retrieving real IP",
+				"id", requestTrace.ID,
+				"err", err,
+			)
 		}
 
 		app.logger.Infow("incoming request",
@@ -103,7 +109,7 @@ func (app *application) logging(next http.Handler) http.Handler {
 			"id", requestTrace.ID,
 			"http_code", requestTrace.HttpCode,
 			"end_time", end,
-			"duration", end.Sub(requestTrace.Start),
+			"duration_ms", end.Sub(requestTrace.Start).Milliseconds(),
 		}
 		if requestTrace.PrivateErr != nil {
 			fields = append(fields, "private_err", requestTrace.PrivateErr)
@@ -117,13 +123,16 @@ func (app *application) logging(next http.Handler) http.Handler {
 		case 5:
 			app.logger.Errorw("request error", fields...)
 		}
-	})
-
-	return app.tracing(fn)
+	}))
 }
 
+// The metrics middleware is used to register metrics (scraped by Prometheus) of incoming HTTP
+// requests. Currently two metrics are registered: the count of the HTTP requests (divided by
+// path and HTTP code) and the latency of the responses (divided by path). The scraping
+// endpoint itself is not monitored.
 func (app *application) metrics(next http.Handler) http.Handler {
 
+	// Declare and register the counter of HTTP requests.
 	requestCount := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "api_http_request",
@@ -135,6 +144,7 @@ func (app *application) metrics(next http.Handler) http.Handler {
 		panic(err)
 	}
 
+	// Declare and register the histogram of HTTP responses latency.
 	requestsLatency := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "api_http_requests_duration_milliseconds",
@@ -147,15 +157,19 @@ func (app *application) metrics(next http.Handler) http.Handler {
 		panic(err)
 	}
 
+	// Wrap the returned middleware in the tracing middleware, that is, before invoking
+	// the function call the tracing function logic.
 	return app.tracing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestTrace := tracing.TraceFromRequestCtx(r)
 		next.ServeHTTP(w, r)
 
 		path := r.URL.Path
-		if path != app.config.Metrics.MetricsEndpoint {
-			requestCount.WithLabelValues(path, fmt.Sprintf("%d", requestTrace.HttpCode)).Inc()
-			requestsLatency.WithLabelValues(path).Observe(float64(time.Since(requestTrace.Start).Milliseconds()))
+		if path == app.config.Metrics.MetricsEndpoint {
+			return
 		}
+
+		requestCount.WithLabelValues(path, fmt.Sprintf("%d", requestTrace.HttpCode)).Inc()
+		requestsLatency.WithLabelValues(path).Observe(float64(time.Since(requestTrace.Start).Milliseconds()))
 	}))
 }
 

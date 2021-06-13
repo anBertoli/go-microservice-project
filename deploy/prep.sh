@@ -65,6 +65,11 @@ mkdir -p /var/log/nginx/snapvault/
 touch /var/log/nginx/snapvault/error.log
 touch /var/log/nginx/snapvault/access.log
 
+# create log files for grafana proxying
+mkdir -p /var/log/nginx/grafana/
+touch /var/log/nginx/grafana/access.log
+touch /var/log/nginx/grafana/error.log
+
 # copy nginx confs into nginx folder
 mkdir -p /etc/nginx/sites/
 cp /root/deploy/nginx_conf/nginx.conf /etc/nginx/nginx.conf
@@ -102,15 +107,46 @@ cp /root/deploy/nginx_conf/nginx.service /lib/systemd/system/nginx.service
 systemctl enable nginx
 systemctl start nginx
 
+
+
 ############### PROMETHEUS ###############
 cd $WORK_DIR
 
+# Download prometheus binary for Linux.
 wget -O ./prometheus-2.27.1.tar.gz https://github.com/prometheus/prometheus/releases/download/v2.27.1/prometheus-2.27.1.linux-amd64.tar.gz
 tar -zxvf prometheus-2.27.1.tar.gz
-
 cp prometheus-2.27.1.linux-amd64/prometheus /usr/local/bin/prometheus
+
+# Prep configuration file.
+mkdir -p /etc/prometheus
+cp /root/deploy/prom_conf/prometheus.conf.yaml /etc/prometheus/prometheus.conf.yaml
+
+# Create storage directory.
+mkdir -p /var/lib/prometheus/
+
+
 
 ############### PROMETHEUS (SYSTEMD UNIT) ###############
 cp /root/deploy/prom_conf/prometheus.service /lib/systemd/system/prometheus.service
 systemctl enable prometheus
 systemctl start prometheus
+
+
+
+############### GRAFANA ###############
+cd $WORK_DIR
+
+sudo apt-get install -y adduser libfontconfig1
+sudo wget https://dl.grafana.com/oss/release/grafana_8.0.1_amd64.deb
+sudo dpkg -i grafana_8.0.1_amd64.deb
+
+# Adjust configuration file
+sed -i "s/^;root_url.*$/root_url = https:\/\/snapvault.ablab.dev\/grafana/g" /etc/grafana/grafana.ini
+sed -i "s/^;serve_from_sub_path = false.*$/serve_from_sub_path = true/g" /etc/grafana/grafana.ini
+
+
+
+############### GRAFANA (SYSTEMD UNIT) ###############
+sudo systemctl daemon-reload
+sudo systemctl enable grafana-server.service
+sudo systemctl start grafana-server
