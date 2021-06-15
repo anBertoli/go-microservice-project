@@ -28,15 +28,9 @@
         <p>Hi!</p>
 
         <p>
-        Follow this instructions to regenerate your main keys. Please click the button below to obtain new main keys,
-        take note of it, since they will be displayed only one time.
-        </p>
-        <form action="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">
-            <button type="submit">Activate account</button>
-        </form>
-        <p>
-            If the button doesn't work go to the following link:
-            <a href="{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}">{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}</a>
+        Follow this instructions to regenerate your main keys. Please follow the link below to obtain new main keys,
+        take note of it, since they will be displayed only one time:
+        <a href="{{.hostName}}/v1/users/recover-key?token={{.recoverToken}}">{{.hostName}}/v1/users/recover-keys?token={{.recoverToken}}</a>
         </p>
         <p>
             Please note that this is a one-time use token and it will expire after 3 hours.
