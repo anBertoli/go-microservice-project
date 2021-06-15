@@ -40,7 +40,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.gohtml", mailData)
 		if err != nil {
-			logger.Errorf("sending activation mail", "err", err)
+			logger.Errorw("sending activation mail", "err", err)
 			return
 		}
 		logger.Infof("activation mail sent")
@@ -92,7 +92,7 @@ func (app *application) genKeyRecoveryTokenHandler(w http.ResponseWriter, r *htt
 		}
 		err = app.mailer.Send(input.Email, "recover_key.gohtml", mailData)
 		if err != nil {
-			logger.Errorf("sending recover key mail", "err", err)
+			logger.Errorw("sending recover key mail", "err", err)
 			return
 		}
 		app.logger.Infof("recover key mail sent")

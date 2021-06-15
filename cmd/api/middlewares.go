@@ -79,6 +79,11 @@ func (app *application) logging(next http.Handler) http.Handler {
 	return app.tracing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestTrace := tracing.TraceFromRequestCtx(r)
 
+		if r.URL.Path == app.config.Metrics.MetricsEndpoint {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Perform the first log about the incoming request.
 		ip, err := realIP(r)
 		if err != nil {
