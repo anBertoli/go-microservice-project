@@ -21,7 +21,7 @@ chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
 
 
 ############### FIREWALL ###############
-# Configure the firewall to allow SSH, HTTP and HTTPS traffic.
+# Configure the firewall to allow SSH, HTTP and HTTPS incoming traffic.
 ufw allow 22
 ufw allow 80/tcp
 ufw allow 443/tcp

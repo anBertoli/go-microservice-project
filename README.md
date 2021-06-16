@@ -3,9 +3,12 @@
 Snap Vault is a project made to share, illustrate and discuss patterns and best practices for REST APIs and 
 servers written in Go.
 
-Snap Vault is a simple REST API that basically performs CRUD operations on galleries and images, with an authentication
-system built on top of authentication keys and permissions. The focus here is not on the features of the application 
-but on the architecture of the project.
+Snap Vault is a simple REST API that basically performs CRUD operations on galleries and images. The application incorporates
+an authentication system built on top of the concept of users, keys and permissions. The focus here is not on the features
+of the application but on the architecture of the project.
+
+The repository contains also basic scripts and configuration files useful to deploy the REST API on a remote machine and to 
+monitor the runtime behaviour of the application (with Prometheus + Grafana). 
 
 The project is composed of:
 - the Snap Vault API binary
@@ -13,6 +16,22 @@ The project is composed of:
 - database migrations (postgres)
 - deploy scripts and systemd units
 - several in-code explanations
+
+## Architecture 
+
+![architecture of the application](./assets/architecture.svg "architecture")
+
+The public interface of the architecture is Nginx which act as a reverse proxy. Nginx redirect HTTP requests to the
+REST API, which is our Go application. The API have exclusive access to the Postgres database and writes data to the 
+file system (in a specific _storage_ directory). The API binds to the loopback interface, so it is not publicly 
+accessible. API responses will flow through Nginx to reach the clients.
+
+Let's talk about monitoring. The private Prometheus instance scrapes metrics to the instrumented Go application and 
+exposes fetched metrics to the Grafana server, which will periodically poll Prometheus. Nginx will redirect requests 
+starting with _/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ 
+endpoint of the REST API is blocked by Nginx (it is used from Prometheus to poll the application).
+
+
 
 ## Project structure
 
