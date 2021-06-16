@@ -1,9 +1,7 @@
 
 GIT_DESCRIPTION = $(shell git describe --always --dirty --tags --long)
 LINKER_FLAGS = '-s -X main.version=${GIT_DESCRIPTION}'
-
 REMOTE_IP = '168.119.170.168'
-DB_PASSWORD = "snapvault-secret-password"
 
 .PHONY: run build build-linux build-mac clean remote/provisioning remote/deploy cloc
 
@@ -22,7 +20,7 @@ build-mac: clean
 remote/provisioning:
 	scp -i ~/.ssh/hetzner_rsa  -r ./deploy root@${REMOTE_IP}:/root/
 	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "chmod +0700 /root/deploy/prep.sh"
-	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "DB_PASSWORD=${DB_PASSWORD} /root/deploy/prep.sh"
+	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "/root/deploy/prep.sh"
 	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "rm -rf /root/deploy"
 	ssh -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP}
 
@@ -33,7 +31,7 @@ remote/deploy: build-linux
 	scp -i ~/.ssh/hetzner_rsa -r ./migrations/ snapvault@${REMOTE_IP}:/home/snapvault/migrations
 	scp -i ~/.ssh/hetzner_rsa -r ./conf/ snapvault@${REMOTE_IP}:/home/snapvault/conf
 	ssh -t -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP} "chmod +0700 /home/snapvault/deploy/deploy.sh"
-	ssh -t -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP} "DB_PASSWORD=${DB_PASSWORD} /home/snapvault/deploy/deploy.sh"
+	ssh -t -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP} "/home/snapvault/deploy/deploy.sh"
 
 clean:
 	rm -rf bin

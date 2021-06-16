@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DB_PASSWORD=snap-secret-password
+
 ############### STORAGE ###############
 STORE_DIR=/var/snapvault
 

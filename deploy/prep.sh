@@ -1,6 +1,7 @@
 #!/bin/bash
 
 USERNAME=snapvault
+DB_PASSWORD=snap-secret-password
 
 apt update
 apt --yes upgrade
