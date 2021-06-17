@@ -443,23 +443,23 @@ go run ./cmd/cli migrate \
 
 ## Deploy
 The _deploy_ folder contains several files related to the deploy of the application. Note that values and paths in these
-files must be edited with correct values for you specific needs (example: snapvault.ablab.dev will not work if you deploy
-the application since it is a domain already owned). 
+files must be edited with correct values for you specific needs (example: the domain snapvault.ablab.dev will not work 
+since it is already owned). 
 
 The _nginx_ directory has configuration files to setup an Nginx instance which will act as a reverse proxy between public
-requests and our REST API. The _prometheus_ directory contains the prometheus configuration file and the systemd unit for
-prometheus. The _api_ directory contains the systemd unit for the REST API.
+requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd unit for Prometheus. 
+The _api_ directory contains the systemd unit for the REST API.
 
-The makefile contains a command to provision a single machine (`remote/provisioning`), that is, install nginx, postgres, 
+The makefile contains a command to provision a single machine (`remote/provisioning`), that is, it installs nginx, postgres, 
 prometheus and grafana. The makefile rule will upload all necessary files and execute the `prep.sh` bash script. 
 
-A second command could be used to deploy our app (`remote/deploy`) on that machine and run the db migrations. All necessary
-files are uploaded and the API in started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ 
-rule will ovveride and remove every previously deployed instance of the API. The `deploy.sh` will be run as part of the 
+A second command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All necessary
+files are uploaded and the API is started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ 
+rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as part of the 
 workflow.
 
-Again, values in the prep/deploy files and in the makefile should be edited with your values. Note that the deploy workflow 
-presented in this project is simplistic since is not the focus of the project. 
+Again, values in the deploy directory and in the makefile should be edited with your specific values. Note that **the deploy 
+workflow presented in this project is simplistic because is not the focus of the project**. 
 
 Note: working on Ubuntu 20.04.
 
