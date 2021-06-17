@@ -1,64 +1,65 @@
 # Snap Vault
 
-Snap Vault is a project made to share, illustrate and discuss patterns and best practices for REST APIs and 
-servers written in Go.
+Snap Vault is a project made to share, illustrate and discuss patterns and best practices for REST APIs and servers
+written in Go. Discussions, new proposals and PR are encouraged and appreciated. The project is thoroughly commented
+in order to illustrate and motivate the logic of the code.
 
-Snap Vault is a simple REST API that basically performs CRUD operations on galleries and images. The application incorporates
-an authentication system built on top of the concept of users, keys and permissions. The focus here is not on the features
-of the application but on the architecture of the project.
+Snap Vault is a simple REST API that performs CRUD operations on galleries and images. The application incorporates
+an authentication system built on top of the concepts of users, keys and permissions. The focus here is not on the 
+features of the API but on the structure of the Go project.
 
-The repository contains also basic scripts and configuration files useful to deploy the REST API on a remote machine and to 
-monitor the runtime behaviour of the application (with Prometheus + Grafana). 
+The repository contains additional scripts and configuration files useful to deploy the REST API on a remote machine 
+and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
 
 The project is composed of:
-- the Snap Vault API binary
-- the Snap Vault CLI binary
+- the Snap Vault API application
+- the Snap Vault CLI application
 - database migrations (postgres)
 - deploy scripts and systemd units
-- several in-code explanations
+- a lot of in-code explanations
+
 
 ## Architecture 
 
 ![architecture of the application](./assets/architecture.svg "architecture")
 
-The public interface of the architecture is Nginx which act as a reverse proxy. Nginx redirect HTTP requests to the
-REST API, which is our Go application. The API have exclusive access to the Postgres database and writes data to the 
+The public interface of the architecture is a Nginx instance which act as a reverse proxy. Nginx redirect HTTP requests
+to the REST API, aka our Go application. The API have exclusive access to the Postgres database and writes data to the 
 file system (in a specific _storage_ directory). The API binds to the loopback interface, so it is not publicly 
-accessible. API responses will flow through Nginx to reach the clients.
+accessible. The API responses will flow back through Nginx to reach the clients.
 
-Let's talk about monitoring. The private Prometheus instance scrapes metrics to the instrumented Go application and 
-exposes fetched metrics to the Grafana server, which will periodically poll Prometheus. Nginx will redirect requests 
-starting with _/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ 
-endpoint of the REST API is blocked by Nginx (it is used from Prometheus to poll the application).
-
+Let's talk about monitoring. The private Prometheus instance scrapes metrics from the instrumented Go application and 
+exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests starting with 
+_/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ endpoint of the
+REST API is blocked by Nginx since it exposes the (sensitive) app metrics. Indeed, this endpoint is used by 
+Prometheus to poll the application.
 
 
 ## Project structure
 
-The architectural pattern used in this project is influenced by the hexagonal architecture. In practice, it means, 
-among several things, that the business logic should have no knowledge of transport-related concepts. Your core 
-services shouldn’t know anything about HTTP headers, gRPC error codes or any other adapter used to expose them 
-to the world. Applying the principle to the Go language, Go-kit was inspirational about this. I suggest taking
-a look at it at https://gokit.io/. However, I decided to drastically reduce the complexity of go-kit by not following 
-exactly the same patterns used there.
+The architectural pattern used in this project is influenced by the hexagonal architecture. It means, among several
+things, that the business logic should have no knowledge of transport-related concepts. Your core services shouldn’t 
+know anything about HTTP headers, gRPC error codes or any other adapter used to expose them to the world. Applying the
+principle to the Go language, Go-kit was inspirational about this. I suggest taking a look at it at https://gokit.io/. 
+However, I decided to drastically reduce the complexity of go-kit by not following exactly the same patterns used there.
 
 The project is laid out in two layers.
 
-1. Transport layer. The transport layer is bound to concrete transports like HTTP or gRPC. No business logic
-is implemented here, the goal of this layer is to expose your services to the world by creating transport specific 
-adapters, like for HTTP, RPC, CLI, events, etc.
+1. Transport layer. The transport layer is bound to concrete transports like JSON-over-HTTP, XML-over-HTTP or gRPC. 
+No business logic is implemented here, the goal of this layer is to expose your services to the world by creating 
+transport specific adapters, like for HTTP, RPC, CLI, events, etc.
 
-2. Service layer. This layer is where all of the business logic is implemented. Tipically, each service method
-is exposed in a single transport endpoint. Services shouldn't have any knowledge about the transport layer.  
+2. Service layer. This layer is where all the business logic is implemented. Typically, each service method is exposed
+in a single transport endpoint. Services shouldn't have any knowledge about the transport layer.  
 
-Both the layers could be wrapped with middlewares to add functionality, such as logging, rate limiting, 
+Both the layers could be wrapped with middlewares to add functionalities, such as logging, rate limiting, 
 metrics, authentication and so on. It’s common to chain multiple middlewares around an endpoint or service. 
 
-The division in two layers and the middleware (decorator) pattern enforce a more strict separation of concerns and 
-allows us to reuse code when needed. Adding a new transport for your services will be just a matter of writing some 
+The division in these layers and the middleware (decorator) pattern enforce a more strict separation of concerns and 
+allows us to reuse code when needed. Adding new transports for the service layer is just a matter of writing some 
 adapter functions. 
 
------------------ image here
+![architecture of the application](./assets/api_layers.svg "architecture")
 
 ## Services
 
