@@ -193,7 +193,7 @@ func NewMetricsMiddleware(next Service) *MetricsMiddleware {
 func (mm *MetricsMiddleware) ListRooms(ctx context.Context, page int) ([]Room, error) {
     defer func(start time.Time) {
         mm.requestLatency.WithLabelValues("list-rooms").Observe(time.Since(start).Seconds())
-	    mm.requestCount.WithLabelValues("list-rooms").Inc()
+        mm.requestCount.WithLabelValues("list-rooms").Inc()
     }(time.Now())
 
     return mm.Service.ListRooms(ctx, page)
@@ -453,9 +453,10 @@ prometheus. The _api_ directory contains the systemd unit for the REST API.
 The makefile contains a command to provision a single machine (`remote/provisioning`), that is, install nginx, postgres, 
 prometheus and grafana. The makefile rule will upload all necessary files and execute the `prep.sh` bash script. 
 
-A second command could be used to deploy our app (`remote/deploy`) on that machine. All necessary files are uploaded and 
-the API in started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ rule will ovveride and
-remove every previously deployed instance of the API. The `deploy.sh` will be run as part of the workflow.
+A second command could be used to deploy our app (`remote/deploy`) on that machine and run the db migrations. All necessary
+files are uploaded and the API in started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ 
+rule will ovveride and remove every previously deployed instance of the API. The `deploy.sh` will be run as part of the 
+workflow.
 
 Again, values in the prep/deploy files and in the makefile should be edited with your values. Note that the deploy workflow 
 presented in this project is simplistic since is not the focus of the project. 
