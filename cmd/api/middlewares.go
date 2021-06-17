@@ -16,9 +16,9 @@ import (
 )
 
 // The extractAuthKey middleware extracts the authentication key from the request 'Authorization"
-// header and put it into the request context. The logic here is not to authenticate the user,
+// header and put it into the request context. The logic here is not meant to authenticate the user,
 // but to provide transport-specific data extraction. The authentication is business logic
-// and this will be handled by an internal service.
+// and this will be handled by the service layer.
 func (app *application) extractAuthKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
