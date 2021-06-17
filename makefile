@@ -1,7 +1,6 @@
 
 GIT_DESCRIPTION = $(shell git describe --always --dirty --tags --long)
 LINKER_FLAGS = '-s -X main.version=${GIT_DESCRIPTION}'
-REMOTE_IP = '168.119.170.168'
 
 .PHONY: run build build-linux build-mac clean remote/provisioning remote/deploy cloc
 
@@ -18,6 +17,10 @@ build-mac: clean
 	GOOS=darwin GOARCH=amd64 go build -ldflags=${LINKER_FLAGS} -o ./bin/mac/snapvault-cli_${GIT_DESCRIPTION} ./cmd/cli
 
 remote/provisioning:
+	@if [ -z ${REMOTE_IP} ]; then\
+		echo "error: remote IP not set"; \
+		exit 1; \
+	fi
 	scp -i ~/.ssh/hetzner_rsa  -r ./deploy root@${REMOTE_IP}:/root/
 	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "chmod +0700 /root/deploy/prep.sh"
 	ssh -i ~/.ssh/hetzner_rsa  root@${REMOTE_IP} "/root/deploy/prep.sh"
@@ -25,6 +28,10 @@ remote/provisioning:
 	ssh -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP}
 
 remote/deploy: build-linux
+	@if [ -z ${REMOTE_IP} ]; then\
+		echo "error: remote IP not set"; \
+		exit 1; \
+	fi
 	ssh -t -i ~/.ssh/hetzner_rsa  snapvault@${REMOTE_IP} "rm -rf /home/snapvault/deploy /home/snapvault/bin /home/snapvault/migrations /home/snapvault/conf"
 	scp -i ~/.ssh/hetzner_rsa -r ./bin/linux/ snapvault@${REMOTE_IP}:/home/snapvault/bin
 	scp -i ~/.ssh/hetzner_rsa -r ./deploy/ snapvault@${REMOTE_IP}:/home/snapvault/deploy
