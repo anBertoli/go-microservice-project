@@ -444,7 +444,7 @@ go run ./cmd/cli migrate \
 ## Deploy
 The _deploy_ folder contains several files related to the deploy of the application. Note that values and paths in these
 files must be edited with correct values for you specific needs (example: the domain snapvault.ablab.dev will not work 
-since it is already owned). 
+since it is already owned).
 
 The _nginx_ directory has configuration files to setup an Nginx instance which will act as a reverse proxy between public
 requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd unit for Prometheus. 
@@ -460,6 +460,7 @@ workflow.
 
 Again, values in the deploy directory and in the makefile should be edited with your specific values. Note that **the deploy 
 workflow presented in this project is simplistic because is not the focus of the project**. 
+
 
 Note: working on Ubuntu 20.04.
 
