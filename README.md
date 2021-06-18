@@ -458,6 +458,8 @@ files are uploaded and the API is started as a systemd unit (all operations are 
 rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as part of the 
 workflow.
 
+Both commands will stop if they not found the REMOTE_IP env var set (which must be set to the remote machine IP).
+
 Again, values in the deploy directory and in the makefile should be edited with your specific values. Note that **the deploy 
 workflow presented in this project is simplistic because is not the focus of the project**. 
 
