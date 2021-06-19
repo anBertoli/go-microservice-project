@@ -1,12 +1,12 @@
 # Snap Vault
 
 Snap Vault is a project made to share, illustrate and discuss patterns and best practices for REST APIs and servers
-written in Go. Discussions, new proposals and PR are encouraged and appreciated. The project is thoroughly commented
+written in Go. Discussions, new proposals and PRs are encouraged and appreciated. The project is thoroughly commented
 in order to illustrate and motivate the logic of the code.
 
 Snap Vault is a simple REST API that performs CRUD operations on galleries and images. The application incorporates
-an authentication system built on top of the concepts of users, keys and permissions. The focus here is not on the 
-features of the API but on the structure of the Go project.
+an authentication system built on top of the concepts of users, keys and permissions. The focus of the project is not
+on the features of the API but on the software structure and architecture.
 
 The repository contains additional scripts and configuration files useful to deploy the REST API on a remote machine 
 and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
