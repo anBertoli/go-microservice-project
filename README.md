@@ -6,7 +6,7 @@ in order to illustrate and motivate the logic of the code.
 
 Snap Vault is a simple REST API that performs CRUD operations on galleries and images. The application incorporates
 an authentication system built on top of the concepts of users, keys and permissions. The focus of the project is not
-on the features of the API but on the software structure and architecture.
+on the features of the API but on the software structure and layout.
 
 The repository contains additional scripts and configuration files useful to deploy the REST API on a remote machine 
 and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
@@ -21,16 +21,16 @@ The project is composed of:
 
 ## Architecture 
 
-The public interface of the architecture is a Nginx instance which act as a reverse proxy. Nginx redirect HTTP requests
-to the REST API, aka our Go application. The API have exclusive access to the Postgres database and writes data to the 
-file system (in a specific _storage_ directory). The API binds to the loopback interface, so it is not publicly 
-accessible. The API responses will flow back through Nginx to reach the clients.
+The public interface of the system is a Nginx instance which acts as a reverse proxy. Nginx redirects HTTP requests
+to the REST API, aka our Go application. The API have exclusive access to the Postgres database and writes data into the 
+file system (in a specific _storage_ directory). The REST API binds to the loopback interface, so it isn't publicly 
+accessible. The API responses flow back through Nginx to reach the clients.
 
-Let's talk about monitoring. The private Prometheus instance scrapes metrics from the instrumented Go application and 
-exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests starting with 
-_/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ endpoint of the
-REST API is blocked by Nginx since it exposes the (sensitive) app metrics. Indeed, this endpoint is used by 
-Prometheus to poll the application.
+Let's talk about monitoring. The private Prometheus instance is configured to scrape metrics from the instrumented Go 
+application and exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests
+starting with _/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ 
+endpoint of the REST API is blocked by Nginx since it exposes the (sensitive) app metrics. Indeed, this endpoint is 
+used by Prometheus to poll the application.
 
 ![architecture of the application](./assets/architecture.svg "architecture")
 
