@@ -157,7 +157,7 @@ service.
 
 Service middlewares should provide business-logic related features, while transport related features could be provided
 by transport middlewares. In the next snippet, we define a metrics middleware to record statistics about our service
-utilization.
+utilization (only the two first methods are implemented, for brevity).
 
 ```go
 package booking 
@@ -169,9 +169,20 @@ type MetricsMiddleware struct {
 }
 
 func NewMetricsMiddleware(next Service) *MetricsMiddleware {
-    // Create and register needed Prometheus metrics, a.k.a instrument 
-    // the code with Prometheus counters, gauges and histograms.
-    // ...
+    requestLatency := promauto.NewHistogramVec(
+        prometheus.HistogramOpts{
+            Name:    "latency_microseconds",
+            Help:    "latency of requests in microseconds",
+        },
+        []string{"path"},
+    )
+    requestCount := promauto.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "endpoint_count",
+            Help: "endpoint count",
+        },
+        []string{"path"},
+    )
 
     return &MetricsMiddleware {
         requestLatency: requestLatency,
@@ -189,7 +200,6 @@ func (mm *MetricsMiddleware) ListRooms(ctx context.Context, page int) ([]Room, e
     return mm.Service.ListRooms(ctx, page)
 }
 
-// Implement all other methods.
 ``` 
 
 Note the following two things.
