@@ -74,12 +74,11 @@ be chained together and with the core service to provide additional functionalit
 The following code snippet puts the concept in practice. It is only a trivial example, but it could help to grasp the
 idea. 
 
-First of all we define an abstract interface for our service.
+First of all we define an abstract interface for our service and some related types.
 
 ```go
 package booking
 
-// Define the service interface.
 type Service interface {
     ListRooms(ctx context.Context, page int) ([]Room, error)
     BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error)
@@ -104,13 +103,11 @@ type Room struct {
 ```
 
 Then we provide at least one concrete implementation of the interface. Here we hypothetically save the data in a 
-relational database and we contact some payment service.
+relational database and we contact some payment service. Service dependencies are hold into the struct fields.
 
 ```go
 package booking
  
-// Define a struct that holds shared dependencies and 
-// make sure it implements the Service interface.
 type SimpleService struct {
     Store         store.Models
     Logger        log.Logger
