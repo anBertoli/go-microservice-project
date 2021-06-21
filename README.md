@@ -69,9 +69,9 @@ By using interfaces, you enforce the fact that transport adapters couldn't intro
 
 In practice, services of this project are modeled as concrete implementations of an interface defined specifically for 
 a specific domain area (users, galleries and so on). Service middlewares also satisfy the same interface, so they can 
-be chained together and with the core service to provide additional functionalities.
+be chained together and with the core service to provide additional functionalities and to enhance **composability**.
 
-The following code snippets put in practice the concept. It is only a trivial example, but it could help to grasp the
+The following code snippet puts the concept in practice. It is only a trivial example, but it could help to grasp the
 idea. 
 
 First of all we define an abstract interface for our service.
@@ -79,7 +79,7 @@ First of all we define an abstract interface for our service.
 ```go
 package booking
 
-// Define a service interface and some helper types.
+// Define the service interface.
 type Service interface {
     ListRooms(ctx context.Context, page int) ([]Room, error)
     BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error)
@@ -104,13 +104,13 @@ type Room struct {
 ```
 
 Then we provide at least one concrete implementation of the interface. Here we hypothetically save the data in a 
-relational database, then we contact some payment service.
+relational database and we contact some payment service.
 
 ```go
 package booking
  
-// Define a struct that holds shared dependencies
-// and make sure it implements the Service interface.
+// Define a struct that holds shared dependencies and 
+// make sure it implements the Service interface.
 type SimpleService struct {
     Store         store.Models
     Logger        log.Logger
@@ -119,27 +119,22 @@ type SimpleService struct {
 
 func (ss *SimpleService) ListRooms(ctx context.Context, page int) ([]Room, error) {
     // List available rooms, retrieving data from the database.
-    // ...
 }
 
 func (ss *SimpleService) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
     // Reserve the room into the DB for the user and return back reservation data.
-    // ...
 }
 
 func (ss *SimpleService) UpdateReservation(ctx context.Context, reservationID int64, people int) error {
     // Update the number of people for the reservation, making sure the room has enough space.
-    // ...
 }
 
 func (ss *SimpleService) DeleteReservation(ctx context.Context, reservationID int64, people int) error {
     // Delete an existing reservation identified by the provided ID, the room will be available again.
-    // ...
 }
 
 func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error {
     // Confirm an existing reservation and charge the user by contacting a payment service.
-    // ...
 }
 ```
 
@@ -148,12 +143,12 @@ Finally, our service can be used from other parts of the application.
 ```go
 package main
 
-// Define an interface variable and assign the concrete implementation to it.
+// Define an interface variable and assign the 
+// concrete implementation to it.
 var bookingService booking.Service
 
 bookingService = booking.SimpleService{store, logger, "https://bank-endpoint"}
 
-// Later on...
 res, err := bookingService.BookRoom(ctx, userID, roomID, people)
 if err != nil {
     // ...
