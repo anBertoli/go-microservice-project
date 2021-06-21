@@ -52,11 +52,11 @@ transport specific adapters, like for HTTP, RPC, CLI, events, etc.
 in a single transport endpoint. Services shouldn't have any knowledge about the transport layer.  
 
 Both the layers could be wrapped with middlewares to add functionalities, such as logging, rate limiting, 
-metrics, authentication and so on. It’s common to chain multiple middlewares around an endpoint or service. 
+metrics, authentication and so on. It’s totally fine to chain multiple middlewares around an endpoint or service. 
 
-The division in these layers and the middleware (decorator) pattern enforce a more strict separation of concerns and 
-allows us to reuse code when needed. Adding new transports for the service layer is just a matter of writing some 
-adapter functions. 
+The division in these layers and the middleware (decorator) pattern enforce a stricter separation of concerns and 
+allows us to reuse code. Starting from a complete service layer, adding a new transport is just a matter of writing 
+some adapter functions. 
 
 ![architecture of the application](./assets/api_layers.svg "architecture")
 
