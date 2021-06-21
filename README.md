@@ -135,20 +135,18 @@ func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, b
 }
 ```
 
-Finally, our service can be used from other parts of the application.
+Finally, our service can be used from other parts of the application. Note the 'assignment to interface' operation.
 
 ```go
 package main
 
-// Define an interface variable and assign the 
-// concrete implementation to it.
 var bookingService booking.Service
 
 bookingService = booking.SimpleService{store, logger, "https://bank-endpoint"}
 
 res, err := bookingService.BookRoom(ctx, userID, roomID, people)
 if err != nil {
-    // ...
+    return err
 }
 ```
 
