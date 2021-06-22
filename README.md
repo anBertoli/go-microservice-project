@@ -168,6 +168,8 @@ type MetricsMiddleware struct {
     Service
 }
 
+// Instantiate and return the metrics middleware. Create the Prometheus 
+// metrics and put them into the middleware struct.      
 func NewMetricsMiddleware(next Service) *MetricsMiddleware {
     requestLatency := promauto.NewHistogramVec(
         prometheus.HistogramOpts{
@@ -199,6 +201,17 @@ func (mm *MetricsMiddleware) ListRooms(ctx context.Context, page int) ([]Room, e
 
     return mm.Service.ListRooms(ctx, page)
 }
+
+func (mm *MetricsMiddleware) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
+    defer func(start time.Time) {
+        mm.requestLatency.WithLabelValues("book-room").Observe(time.Since(start).Seconds())
+        mm.requestCount.WithLabelValues("book-room").Inc()
+    }(time.Now())
+
+    return mm.Service.BookRoom(ctx, userID, roomID, people)
+}
+
+// ... other methods
 
 ``` 
 
