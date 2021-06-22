@@ -494,6 +494,32 @@ workflow presented in this project is simplistic because is not the focus of the
 
 Note: working on Ubuntu 20.04.
 
+## Monitoring
+
+It's important to monitor the runtime behaviour of web servers and microservices. To accomplish this, the system 
+includes an instance of Prometheus and an instance of Grafana.
+
+Prometheus is an open-source systems monitoring and alerting toolkit (written in Go btw). It adopts a pull strategy in 
+order to collect metrics, that is, it must be configured to poll data from specific sources (via HTTP requests). The 
+metrics sources must export the data in a specific format. Different client libraries could be used to instrument
+applications and expose data easily. Prometheus is totally private in the Snap Vault system. Prometheus itself exports
+the collected metrics to be used by other tools.  
+
+Grafana is a metrics visualization tool. It could scrape metrics from different systems, in this case from Prometheus.
+Nginx will redirect requests starting with _/grafana_ to the Grafana dashboard (protected with its own auth system). 
+When using Prometheus as the Grafana data source, metrics can be queried with the PromQL query language. 
+
+The following image display a typical Grafana dashboard with some insightful metrics about the REST API utilization.
+
+![grafana dashboard](./assets/grafana.png "grafana")
+
+The metrics used are the following.
+
+- _HTTP requests per second_: `rate(api_http_request[1m])`
+- _Histograms of latencies per second_: `100 * rate(api_http_requests_duration_milliseconds_bucket[1m]) / ignoring(le) group_left rate(api_http_requests_duration_milliseconds_count[1m])`
+- _Average latencies per second_: `rate(api_http_requests_duration_milliseconds_sum[1m]) / rate(api_http_requests_duration_milliseconds_count[1m])`
+
+
 ## Notes
 
 Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future.  
