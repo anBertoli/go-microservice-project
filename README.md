@@ -432,21 +432,21 @@ an interface rather than a concrete type to your services.
 
 ## Running the binaries
 
-Binary packages (aka main) are scoped under the cmd directory. The REST API reads the JSON config file location from 
+Binary packages (aka main packages) are scoped under the cmd directory. The REST API reads in the JSON config file from 
 a path specified via the `config` flag (defaults to `./conf/api.dev.json`). You can find an example configuration file 
 at `./conf/api.example.json`. This file must be edited with valid values before starting the application.
 
-The API could be directly started: 
+The REST API could be directly started with: 
 
 ```shell script
 go run ./cmd/api -config <path/to/config/file>
 ```
 
-or it can be compiled:
+or it can be compiled and then runned:
 
 ```shell script
 make build
-./bin/linux/snapvault-cli_<git_desc> -config <path/to/config/file>
+./bin/linux/snapvault-api_<git_desc> -config <path/to/config/file>
 ```
 
 Under the cmd directory there is also a simple CLI. Currently, it supports only the `migrate` command, but in the future
@@ -454,10 +454,11 @@ it could be extended to support additional features. The _migrate_ command uses 
 module embedded as a library.
 
 ```shell script
-go run ./cmd/cli --help # obtain help for the CLI
+# obtain help for the CLI and for the migrate command
+go run ./cmd/cli --help
+go run ./cmd/cli migrate --help
 
-go run ./cmd/cli migrate --help # obtain help for the migrate command
-
+# perform database migrations
 go run ./cmd/cli migrate \
   --action up  \
   --migrations-folder file://<path/to/migrations/folder>  \
@@ -470,19 +471,19 @@ The _deploy_ folder contains several files related to the deploy of the applicat
 files must be edited with correct values for you specific needs (example: the domain snapvault.ablab.dev will not work 
 since it is already owned).
 
-The _nginx_ directory has configuration files to setup an Nginx instance which will act as a reverse proxy between public
+The _nginx_ directory contains configuration files to setup an Nginx instance which will act as a reverse proxy between public
 requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd unit for Prometheus. 
-The _api_ directory contains the systemd unit for the REST API.
+The _api_ directory contains the systemd unit for the REST API. About the API config file, the deploy process searches for 
+a config file at `conf/api.prod.json` that must be created starting from the example config file. 
 
 The makefile contains a command to provision a single machine (`remote/provisioning`), that is, it installs nginx, postgres, 
-prometheus and grafana. The makefile rule will upload all necessary files and execute the `prep.sh` bash script. 
-
-A second command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All necessary
+prometheus and grafana. The makefile rule will upload all necessary files and execute the `prep.sh` bash script. A second 
+command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All necessary
 files are uploaded and the API is started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ 
 rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as part of the 
-workflow.
+workflow and the `conf/api.prod.json` is uploaded and used as the config file for the deployed API.
 
-Both commands will stop if they not found the REMOTE_IP env var set (which must be set to the remote machine IP).
+Both commands will stop if they don't find the REMOTE_IP env var set (which must be set to the remote machine IP).
 
 Again, values in the deploy directory and in the makefile should be edited with your specific values. Note that **the deploy 
 workflow presented in this project is simplistic because is not the focus of the project**. 
