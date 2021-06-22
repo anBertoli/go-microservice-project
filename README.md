@@ -119,19 +119,23 @@ func (ss *SimpleService) ListRooms(ctx context.Context, page int) ([]Room, error
 }
 
 func (ss *SimpleService) BookRoom(ctx context.Context, userID, roomID int64, people int) (Reservation, error) {
-    // Reserve the room into the DB for the user and return back reservation data.
+    // Reserve the room into the DB for the user and return
+    // back reservation data.
 }
 
 func (ss *SimpleService) UpdateReservation(ctx context.Context, reservationID int64, people int) error {
-    // Update the number of people for the reservation, making sure the room has enough space.
+    // Update the number of people for the reservation, 
+    // making sure the room has enough space.
 }
 
 func (ss *SimpleService) DeleteReservation(ctx context.Context, reservationID int64, people int) error {
-    // Delete an existing reservation identified by the provided ID, the room will be available again.
+    // Delete an existing reservation identified by the provided ID, 
+    // the room will be available again.
 }
 
 func (ss *SimpleService) ConfirmAndPay(ctx context.Context, reservationID int, bankAccount string) error {
-    // Confirm an existing reservation and charge the user by contacting a payment service.
+    // Confirm an existing reservation and charge the user by 
+    // contacting a payment service.
 }
 ```
 
@@ -157,7 +161,8 @@ service.
 
 Service middlewares should provide business-logic related features, while transport related features could be provided
 by transport middlewares. In the next snippet, we define a metrics middleware to record statistics about our service
-utilization (only the two first methods are implemented, for brevity).
+utilization (only the two first methods are implemented, for brevity). When instantiating the middleware we create 
+Prometheus metrics and we store them into the middleware struct.
 
 ```go
 package booking 
@@ -168,8 +173,6 @@ type MetricsMiddleware struct {
     Service
 }
 
-// Instantiate and return the metrics middleware. Create the Prometheus 
-// metrics and put them into the middleware struct.      
 func NewMetricsMiddleware(next Service) *MetricsMiddleware {
     requestLatency := promauto.NewHistogramVec(
         prometheus.HistogramOpts{
@@ -211,7 +214,7 @@ func (mm *MetricsMiddleware) BookRoom(ctx context.Context, userID, roomID int64,
     return mm.Service.BookRoom(ctx, userID, roomID, people)
 }
 
-// ... other methods
+// ... other methods omitted
 
 ``` 
 
@@ -229,6 +232,9 @@ Finally, we can wire things together, typically in our main function. The order 
 changed based on your specific needs (the auth middleware is not implemented here for brevity). Note that each time we 
 reassign the Service variable and we re-use it in the next middleware.
 
+The method call will pass through (in order): the metrics middleware -> the authentication middleware -> the core 
+booking service. 
+
 ```go
 package main 
 
@@ -238,11 +244,9 @@ bookingService = booking.SimpleService{store, logger, "https://bank-endpoint"}
 bookingService = booking.AuthMiddleware{authenticator, bookingService}
 bookingService = booking.NewMetricsMiddleware(metrics, bookingService)
 
-// The method call will pass through (in order):
-// the metrics middleware -> the authentication middleware -> the core booking service 
 res, err := bookingService.BookRoom(ctx, userID, roomID, people)
 if err != nil {
-    // ...
+    return err
 }
 ```
 
@@ -257,15 +261,16 @@ Each type of transport has its own peculiarities and nuances, but all implementa
 - the handler passes the collected data to the service method
 - the output is encoded and sent to the client  
 
-We will implement JSON-over-HTTP adapters to the service defined previously. This layer can be modelled using closures 
-(returning HTTP handlers) or using a struct whose methods are HTTP handlers themselves. The choice is not vital. In the
-Snap Vault project the second approach was followed.
+We will implement JSON-over-HTTP adapters for the booking service defined previously. This layer can be modelled using 
+closures (functions returning HTTP handlers) or using a struct whose methods are HTTP handlers themselves. The choice 
+is not vital. In the Snap Vault project the second approach was followed.
+
+Note in the following snippet that the workflow defined above is used (encode from request, call the service API, 
+encode and send response).
 
 ```go
-package main 
+package main
 
-// Define a jsonapi struct that holds the core services and some additional dependency,
-// then in the same package define the HTTP handlers.
 type jsonapi struct {
     booking booking.Service     
     users   users.Service
@@ -273,39 +278,33 @@ type jsonapi struct {
 } 
 
 func (j *jsonapi) listRoomsHandler(w http.ResponseWriter, r *http.Request) {
-
-    // Extract data from the request.
     query := r.URL.Query()
     page, err := strconv.Atoi(query.Get("page"))
     if err != nil {
         page = 0
     }
-
-    // Call the service method.
+    
     rooms, err := j.booking.ListRooms(r.Context(), page)
     if err != nil {
-        // handle the error
+        log.Print(err)
         return
     }
-
-    // Encode and send the service response. 
+    
     roomsBytes, err := json.Marshal(rooms)
     if err != nil {
-       // handle the error
-        return
+       log.Print(err)
+       return
     }
     w.Write(roomsBytes)
 }
 
-// Other HTTP handlers implementations.
+// ... other HTTP handlers
 ```
 
-The last step is to register our routes and start the server. You can use the routing utility you want, here I used 
-the gorilla/mux router.
+The last step is to register our HTTP handlers and start the server. Here I used the gorilla/mux router, but the routing
+strategy is interchangeable.
 
 ```go
-package main
-
 router := mux.NewRouter()
 
 router.Methods(http.MethodGet).Path("/booking/rooms").HandlerFunc(api.listRoomsHandler)
@@ -316,7 +315,7 @@ router.Methods(http.MethodPost).Path("/booking/rooms/confirm/{id}").HandlerFunc(
 
 err := http.ListenAndServe("127.0.0.1:4000", router)
 if err != nil {
-    log.fatal(err)
+    log.Fatal(err)
 }
 ```
 
@@ -326,44 +325,52 @@ on.
 ### Transport middlewares
 
 Transport middlewares are not modelled following an interface, but are specific for each transport method. For HTTP
-middlewares there is a well-known pattern to create middlewares.
+transports there is a well-known pattern to create middlewares.
 
 ```go
 func httpMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         // Do something before serving the request.
-		
-        next.ServeHTTP(w, r)
-    
-        // Do something after the request was served.
-	})
+        next.ServeHTTP(w, r)    
+        // Do something after the request was served. 
+    })
 }
 ```
 
-The pattern takes advantage of closures to return a wrapped version of the original HTTP handler. It is possible
-to wrap a single endpoint or to the entire HTTP handler passed to the http.ListenAndServe function. 
+The pattern takes advantage of closures to return a wrapped version of the passed in HTTP handler (`next`). It is possible
+to wrap a single endpoint or the entire HTTP handler passed to the http.ListenAndServe function. 
+
+Example of single endpoint wrapping.
 
 ```go
 router := mux.NewRouter()
 
-// Apply some middlewares to a single endpoint...
 listRoomsHandler := middleware1(api.listRoomsHandler)
 listRoomsHandler = middleware2(listRoomsHandler)
 
 router.Methods(http.MethodGet).Path("/booking/rooms").HandlerFunc(listRoomsHandler)
 
-
-// ... or globally to the resulting HTTP handler.
-handler := middleware3(router)
-handler = middleware4(handler)
-
 err := http.ListenAndServe("127.0.0.1:4000", handler)
 if err != nil {
-    log.fatal(err)
+    log.Fatal(err)
 }
 ```
 
-In the Snap Vault codebase several middlewares were used, all related to HTTP related issues:
+Example of entire global wrapping.
+
+```go
+router := mux.NewRouter()
+
+handler := middleware1(router)
+handler = middleware2(handler)
+
+err := http.ListenAndServe("127.0.0.1:4000", handler)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+In the Snap Vault codebase several transport middlewares were used, all related to HTTP related issues:
 - metrics 
 - logging
 - rate-limiting
@@ -374,14 +381,14 @@ In the Snap Vault codebase several middlewares were used, all related to HTTP re
 #### A note on authentication 
 
 It is usual to perform authentication in an HTTP middleware, especially if the project doesn't enforce the separation
-between transport and business logic (services). This pattern is not followed here.
+between transport and business logic. This pattern is not followed here.
 
 The reason is that authentication & authorization are part of the business logic and should be performed inside the
-service layer (or in a dedicated service middleware). This results in more code but will result in a cleaner code, 
-and a better separation of concerns. The transport middleware is still responsible to extract the authentication data
+service layer (or in a dedicated service middleware). This results in more code but also in a cleaner code and a better
+separation of concerns. The transport middleware is still responsible to extract all necessary authentication data
 from a transport-specific location, i.e. the Authorization header for HTTP requests.
 
-This point is debatable, and it is perfectly acceptable to perform authentication in a transport middleware.
+This strategy is debatable, and it is perfectly acceptable to perform authentication in a transport middleware.
 Software engineering involves trade-offs, and valuable exceptions could be made. Note however that DRY code
 is not always cleaner code.
 
@@ -389,9 +396,10 @@ is not always cleaner code.
 ## Data persistence
 
 Storing and retrieving data is typically part of the business logic. For simple data manipulation it is sufficient to 
-pass a sql.DB pointer to the services concrete implementations. For more than trivial operations you usually want to
-create a storage package with a concrete `Store` type. This type will hold the concrete db connection pool and provides
-operations on data, implemented as methods. Then, the `Store` type is provided to the service layer.
+pass a sql.DB pointer to the service concrete implementations (but also to middlewares if needed). For more than trivial 
+operations you usually want to create a storage package with a concrete `Store` type. This type will hold the database 
+connection pool and provides operations on data, implemented as methods on the Store struct. The `Store` type is 
+provided to the service layer.
 
 ```go
 package storage
@@ -401,21 +409,23 @@ type Store struct {
     db     *sql.DB
 }
 
-func (s *Store) InsertReservation(ctx context.Context, res Reservation) error {
+func (s *Store) InsertReservation(ctx context.Context, res Reservation) (Reservation, error) {
     row := s.db.QueryRow(`
         INSERT INTO reservation (userID, roomID, people) 
         VALUES ($1, $2, $3)
         RETURNING id, created_at
     `, res.UserID, res.RoomID, res.People)
 
-    return row.Scan(
+    err := row.Scan(
         &res.ID, 
         &res.CreatedAt,
     )
+
+    return res, err
 }
 ```
 
-Even better, it is possible to define an interface also for persistence operations. Each concrete implementation could 
+Even better, it is possible to define an interface for persistence operations. Each concrete implementation could 
 support a different type of storage, e.g. file system, S3, another storage microservice etc. In this case you provide 
 an interface rather than a concrete type to your services.
 
