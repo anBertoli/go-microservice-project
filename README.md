@@ -447,7 +447,7 @@ or it can be compiled and then runned:
 ```shell script
 make build
 
-# run the API of the CLI
+# run the API or the CLI
 ./bin/linux/snapvault-api_<git_desc> -config <path/to/config/file>
 ./bin/linux/snapvault-cli_<git_desc> 
 ```
