@@ -16,7 +16,7 @@ The project is composed of:
 - the Snap Vault CLI application
 - database migrations (postgres)
 - deploy scripts and systemd units
-- a lot of in-code explanations
+- a lot of comments and in-code explanations
 
 
 ## Architecture 
@@ -446,7 +446,10 @@ or it can be compiled and then runned:
 
 ```shell script
 make build
+
+# run the API of the CLI
 ./bin/linux/snapvault-api_<git_desc> -config <path/to/config/file>
+./bin/linux/snapvault-cli_<git_desc> 
 ```
 
 Under the cmd directory there is also a simple CLI. Currently, it supports only the `migrate` command, but in the future
@@ -491,4 +494,6 @@ workflow presented in this project is simplistic because is not the focus of the
 
 Note: working on Ubuntu 20.04.
 
+## Notes
 
+Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future.  
