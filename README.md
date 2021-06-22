@@ -215,17 +215,17 @@ func (mm *MetricsMiddleware) BookRoom(ctx context.Context, userID, roomID int64,
 
 ``` 
 
-Note the following two things.
-- We embed the _next_ Service (another mw or the core service) in the middleware in order to implement automatically
-the defined interface. When needed, we override methods.
+Note the following things.
+- We embed the _next_ Service (another middleware or the core service) in the metrics middleware in order to automatically
+implement the defined Service interface. When needed, we override methods.
 
-- The 'core' service could be entirely skipped on behalf of the middleware. In an auth middleware for example, the 
-method could return early if the user doesn't have enough permissions.
+- The 'core' service could be entirely skipped on behalf of the middleware. Inside an auth middleware for example, the 
+invoked method could return early if the user doesn't have enough permissions.
 
 - You can record metrics on the transport layer, on the service layer, or both. In the project I collect metrics
 only in the transport layer.
 
-Finally, we can wire everything together, typically in our main function. The order of the middlewares
+Finally, we can wire things together, typically in our main function. The order of the middlewares matters and
 could be changed based on your specific needs (the auth middleware is not implemented here for brevity).
 
 ```go
@@ -233,12 +233,16 @@ package main
 
 var bookingService booking.Service
 
+// Wire the service with the middlewares. Note that each time we reassign the 
+// Service variable and we re-use it in the next middleware.
 bookingService = booking.SimpleService{store, logger, "https://bank-endpoint"}
-bookingService = booking.AuthMiddleware{authenticator, bookinService}
+bookingService = booking.AuthMiddleware{authenticator, bookingService}
 bookingService = booking.NewMetricsMiddleware(metrics, bookingService)
 
-// The method call will pass through (in order): the metrics middleware, the
-// authentication middleware and eventually the core booking service. 
+// The method call will pass through (in order):
+// - the metrics middleware
+// - the authentication middleware 
+// - the core booking service. 
 res, err := bookingService.BookRoom(ctx, userID, roomID, people)
 if err != nil {
     // ...
