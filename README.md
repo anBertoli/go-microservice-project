@@ -507,9 +507,8 @@ the collected metrics to be used by other tools.
 
 Grafana is a metrics visualization tool. It could scrape metrics from different systems, in this case from Prometheus.
 Nginx will redirect requests starting with _/grafana_ to the Grafana dashboard (protected with its own auth system). 
-When using Prometheus as the Grafana data source, metrics can be queried with the PromQL query language. 
-
-The following image display a typical Grafana dashboard with some insightful metrics about the REST API utilization.
+When using Prometheus as the Grafana data source, metrics can be queried with the PromQL query language. The following 
+image displays a typical Grafana dashboard with some insightful metrics about the REST API utilization.
 
 ![grafana dashboard](./assets/grafana.png "grafana")
 
