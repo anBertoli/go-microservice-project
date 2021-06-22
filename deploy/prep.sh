@@ -2,6 +2,7 @@
 
 USERNAME=snapvault
 DB_PASSWORD=snap-secret-password
+EMAIL_FOR_CERTS=<your-email@mail.com>
 
 apt update
 apt --yes upgrade
@@ -97,8 +98,7 @@ else
   rm -rf /usr/bin/certbot
   sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-  # sudo certbot certonly --standalone -m andrea.bertpp@gmail.com -d snapvault.ablab.dev -d www.snapvault.ablab.dev --agree-tos -n
-  sudo certbot certonly --standalone -d snapvault.ablab.dev -d www.snapvault.ablab.dev --agree-tos -n
+  sudo certbot certonly --standalone -m EMAIL_FOR_CERTS -d snapvault.ablab.dev -d www.snapvault.ablab.dev --agree-tos -n
 fi
 
 
