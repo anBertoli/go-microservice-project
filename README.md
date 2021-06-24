@@ -521,4 +521,17 @@ The metrics used are the following.
 
 ## Notes
 
-Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future.  
+Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future.
+
+Lines of codes (cloc output):
+
+Language|#files|#blank|#comment|#code
+-------|-------|-------|-------|-------
+Go|42|779|745|4151
+Markdown|1|137|0|416
+SQL|6|25|0|111
+JSON|3|0|0|105
+Bourne Shell|2|64|31|103
+make|1|9|0|38
+YAML|1|3|2|7
+SUM:|56|1017|778|4931  

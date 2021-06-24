@@ -44,4 +44,4 @@ clean:
 	rm -rf bin
 
 cloc:
-	cloc pkg/ services/ cmd/ deploy/ conf/ migrations/ .gitignore makefile README.md go.mod go.sum
+	cloc pkg/ services/ cmd/ deploy/ conf/ migrations/ .gitignore makefile README.md go.mod go.sum  --md
