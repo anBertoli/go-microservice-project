@@ -40,6 +40,7 @@ func (app *application) handler() http.Handler {
 	router := mux.NewRouter()
 
 	router.Methods(http.MethodPost).Path("/v1/users/register").HandlerFunc(app.registerUserHandler)
+	router.Methods(http.MethodPost).Path("/v1/users/activate").HandlerFunc(app.regenerateActivationTokenHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/activate").HandlerFunc(app.activateUserHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/me").HandlerFunc(app.getUserAccountHandler)
 	router.Methods(http.MethodGet).Path("/v1/users/stats").HandlerFunc(app.getUserStatsHandler)

@@ -29,6 +29,17 @@ func (vm *ValidationMiddleware) RegisterUser(ctx context.Context, name, email, p
 	return vm.Service.RegisterUser(ctx, name, email, password)
 }
 
+// Validate email and password before regenerating the activation token.
+func (vm *ValidationMiddleware) RegenerateActivationToken(ctx context.Context, email, password string) (store.User, string, error) {
+	v := validator.New()
+	validator.ValidateEmail(v, email)
+	validator.ValidatePassword(v, password)
+	if !v.Ok() {
+		return store.User{}, "", v
+	}
+	return vm.Service.RegenerateActivationToken(ctx, email, password)
+}
+
 // Validate the activation token before activating the user.
 func (vm *ValidationMiddleware) ActivateUser(ctx context.Context, token string) (store.User, error) {
 	v := validator.New()

@@ -23,7 +23,7 @@ type UsersService struct {
 // store the plain text versions.
 func (us *UsersService) RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error) {
 
-	// Hash the password. the plain text password is not stored in the db.
+	// Hash the password. The plain text password is not stored in the db.
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return store.User{}, store.Keys{}, "", err
@@ -65,6 +65,48 @@ func (us *UsersService) RegisterUser(ctx context.Context, name, email, password 
 	}
 
 	return user, keys, activationToken.Plain, nil
+}
+
+// Regenerate the activation token for a specific user. Old activations tokens
+// are deleted.
+func (us *UsersService) RegenerateActivationToken(ctx context.Context, email, password string) (store.User, string, error) {
+	user, err := us.Store.Users.GetForEmail(email)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrRecordNotFound):
+			return store.User{}, "", auth.ErrUnauthenticated
+		default:
+			return store.User{}, "", err
+		}
+	}
+
+	// Hash the password and compare it with the has we have stored into the db.
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		switch {
+		case err == bcrypt.ErrMismatchedHashAndPassword:
+			return store.User{}, "", auth.ErrUnauthenticated
+		default:
+			return store.User{}, "", err
+		}
+	}
+
+	// No need to regenerate an activation token if the user was already activated.
+	if user.Activated {
+		return store.User{}, "", ErrAlreadyActive
+	}
+
+	// Delete all old activation tokens and recreate a new one.
+	err = us.Store.Tokens.DeleteAllForUser(store.ScopeActivation, user.ID)
+	if err != nil {
+		return store.User{}, "", err
+	}
+	token, err := us.Store.Tokens.New(user.ID, time.Hour*24, store.ScopeActivation)
+	if err != nil {
+		return store.User{}, "", err
+	}
+
+	return user, token.Plain, nil
 }
 
 // Activate the user using the generated activation token.

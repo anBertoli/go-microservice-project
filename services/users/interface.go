@@ -12,6 +12,7 @@ import (
 // via transport-specific adapters, e.g. the JSON-HTTP api.
 type Service interface {
 	RegisterUser(ctx context.Context, name, email, password string) (store.User, store.Keys, string, error)
+	RegenerateActivationToken(ctx context.Context, email, password string) (store.User, string, error)
 	ActivateUser(ctx context.Context, token string) (store.User, error)
 
 	ListUserKeys(ctx context.Context) ([]KeysList, error)
@@ -27,7 +28,8 @@ type Service interface {
 }
 
 var (
-	ErrMainKeysEdit = errors.New("main keys not editable")
+	ErrMainKeysEdit  = errors.New("main keys not editable")
+	ErrAlreadyActive = errors.New("user already activated")
 )
 
 // This checks makes sure that all service implementation remain
