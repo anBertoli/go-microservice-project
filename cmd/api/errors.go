@@ -45,6 +45,8 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, er
 	// Users service errors.
 	case errors.Is(err, users.ErrMainKeysEdit):
 		app.notEditableKeysResponse(w, r)
+	case errors.Is(err, users.ErrAlreadyActive):
+		app.userAlreadyActiveResponse(w, r)
 
 	// Galleries service errors.
 	case errors.Is(err, galleries.ErrBusy):
@@ -177,6 +179,15 @@ func (app *application) notEditableKeysResponse(w http.ResponseWriter, r *http.R
 	app.sendJSONError(w, r, errResponse{
 		message: err.Error(),
 		status:  http.StatusForbidden,
+		err:     err,
+	})
+}
+
+func (app *application) userAlreadyActiveResponse(w http.ResponseWriter, r *http.Request) {
+	err := errors.New("user already active")
+	app.sendJSONError(w, r, errResponse{
+		message: err.Error(),
+		status:  http.StatusConflict,
 		err:     err,
 	})
 }
