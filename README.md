@@ -4,12 +4,12 @@ Snap Vault is a project made to share, illustrate and discuss patterns and best 
 written in Go. Discussions, new proposals and PRs are encouraged and appreciated. The project is thoroughly commented
 in order to illustrate and motivate the logic of the code.
 
-Snap Vault is a simple REST API that performs CRUD operations on galleries and images. The application incorporates
+Snap Vault is a simple REST API which performs CRUD operations on galleries and images. The application incorporates
 an authentication system built on top of the concepts of users, keys and permissions. The focus of the project is not
-on the features of the API but on the software structure and layout.
+on the features of the API, it's on the software structure and layout.
 
-The repository contains additional scripts and configuration files useful to deploy the REST API on a remote machine 
-and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
+The repository contains additional scripts and configuration files which are useful to deploy the REST API on a remote 
+machine and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
 
 The project is composed of:
 - the Snap Vault API application
@@ -21,13 +21,13 @@ The project is composed of:
 
 ## Architecture 
 
-The public interface of the system is a Nginx instance which acts as a reverse proxy. Nginx redirects HTTP requests
-to the REST API, aka our Go application. The API have exclusive access to the Postgres database and writes data into the 
-file system (in a specific _storage_ directory). The REST API binds to the loopback interface, so it isn't publicly 
+The public interface of the system is a Nginx instance which acts as a reverse proxy. Nginx redirects HTTP requests to 
+the REST API, which is our Go application. The API has exclusive access to the Postgres database and writes data into 
+the file system (in a specific _storage_ directory). The REST API binds to the loopback interface, so it is not publicly 
 accessible. The API responses flow back through Nginx to reach the clients.
 
 Let's talk about monitoring. The private Prometheus instance is configured to scrape metrics from the instrumented Go 
-application and exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests
+application, and it exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests
 starting with _/grafana_ to the grafana dashboard (protected with its own auth system). Additionally, the _/metrics_ 
 endpoint of the REST API is blocked by Nginx since it exposes the (sensitive) app metrics. Indeed, this endpoint is 
 used by Prometheus to poll the application.
@@ -55,7 +55,7 @@ Both the layers could be wrapped with middlewares to add functionalities, such a
 metrics, authentication and so on. It’s totally fine to chain multiple middlewares around an endpoint or service. 
 
 The division in these layers and the middleware (decorator) pattern enforce a stricter separation of concerns and 
-allows us to reuse code. Starting from a complete service layer, adding a new transport is just a matter of writing 
+allow us to reuse code. Starting from a complete service layer, adding a new transport is just a matter of writing 
 some adapter functions. 
 
 ![architecture of the application](./assets/api_layers.svg "architecture")
@@ -65,11 +65,11 @@ some adapter functions.
 As anticipated above, services implement all the business logic of the application. They are agnostic of the concrete
 transport methods used to expose them to the world. In other words, you can reuse the same service to provide similar 
 functionalities to a JSON REST API server, to a CLI, to an RPC server and so on. Services are modelled as interfaces.
-By using interfaces, you enforce the fact that transport adapters couldn't introspect you business logic.
+By using interfaces, you enforce the fact that transport adapters couldn't introspect your business logic.
 
-In practice, services of this project are modeled as concrete implementations of an interface defined specifically for 
-a specific domain area (users, galleries and so on). Service middlewares also satisfy the same interface, so they can 
-be chained together and with the core service to provide additional functionalities and to enhance **composability**.
+In practice, the services of this project are modeled as concrete implementations of an interface defined specifically 
+for a specific domain area (users, galleries and so on). Service middlewares also satisfy the same interface, so they 
+can be chained together and with the core service to provide additional functionalities and to enhance **composability**.
 
 The following code snippet puts the concept in practice. It is only a trivial example, but it could help to grasp the
 idea. 
@@ -155,13 +155,13 @@ if err != nil {
 ```
 
 ### Service middlewares
-Above, we defined an interface to our booking service. We can create some middlewares to provide additional functionalities
+We defined an interface to our booking service above. We can create some middlewares to provide additional functionalities
 to our service. Service middlewares will satisfy the same interface, so they can be chained together and wrap the core
 service.
 
 Service middlewares should provide business-logic related features, while transport related features could be provided
 by transport middlewares. In the next snippet, we define a metrics middleware to record statistics about our service
-utilization (only the two first methods are implemented, for brevity). When instantiating the middleware we create 
+utilization (only the first two methods are implemented, for brevity). When instantiating the middleware we create 
 Prometheus metrics and we store them into the middleware struct.
 
 ```go
@@ -222,8 +222,8 @@ Note the following things.
 - We embed the _next_ Service (another middleware or the core service) in the metrics middleware in order to automatically
 implement the defined Service interface. When needed, we override methods.
 
-- The 'core' service could be entirely skipped on behalf of the middleware. Inside an auth middleware for example, the 
-invoked method could return early if the user doesn't have enough permissions.
+- The 'core' service could be entirely skipped on behalf of the middleware. Inside an auth middleware, for example, the 
+invoked method could return early if the user does not have enough permissions.
 
 - You can record metrics on the transport layer, on the service layer, or both. In the project I collect metrics
 only in the transport layer.
@@ -255,17 +255,17 @@ if err != nil {
 We defined our services and all related middlewares, now we have to expose the service to the outside. The transport 
 layer is related to concrete transports like JSON over HTTP or gRPC. No business logic should be implemented here.
 
-Each type of transport has its own peculiarities and nuances, but all implementations follow this pattern:
+Each type of transport has its own peculiarities and nuances, but all the implementations follow this pattern:
 - a handler is defined for each service method/API (not a strict rule)
 - the handler extracts and decodes relevant data from the request
 - the handler passes the collected data to the service method
 - the output is encoded and sent to the client  
 
-We will implement JSON-over-HTTP adapters for the booking service defined previously. This layer can be modelled using 
+We will implement JSON-over-HTTP adapters for the booking service we defined previously. This layer can be modelled using 
 closures (functions returning HTTP handlers) or using a struct whose methods are HTTP handlers themselves. The choice 
 is not vital. In the Snap Vault project the second approach was followed.
 
-Note in the following snippet that the workflow defined above is used (encode from request, call the service API, 
+Note how, in the following snippet, the workflow defined above is used (decode from request, call the service API, 
 encode and send response).
 
 ```go
@@ -324,7 +324,7 @@ on.
 
 ### Transport middlewares
 
-Transport middlewares are not modelled following an interface, but are specific for each transport method. For HTTP
+Transport middlewares are not modelled following an interface, but they are specific for each transport method. For HTTP
 transports there is a well-known pattern to create middlewares.
 
 ```go
@@ -380,12 +380,12 @@ In the Snap Vault codebase several transport middlewares were used, all related 
 
 #### A note on authentication 
 
-It is usual to perform authentication in an HTTP middleware, especially if the project doesn't enforce the separation
+It is usual to perform authentication in an HTTP middleware, especially if the project does not enforce the separation
 between transport and business logic. This pattern is not followed here.
 
 The reason is that authentication & authorization are part of the business logic and should be performed inside the
-service layer (or in a dedicated service middleware). This results in more code but also in a cleaner code and a better
-separation of concerns. The transport middleware is still responsible to extract all necessary authentication data
+service layer (or in a dedicated service middleware). This pattern results in more (cleaner) code, but also in a better
+separation of concerns. The transport middleware is still responsible to extract all the necessary authentication data
 from a transport-specific location, i.e. the Authorization header for HTTP requests.
 
 This strategy is debatable, and it is perfectly acceptable to perform authentication in a transport middleware.
@@ -397,8 +397,8 @@ is not always cleaner code.
 
 Storing and retrieving data is typically part of the business logic. For simple data manipulation it is sufficient to 
 pass a sql.DB pointer to the service concrete implementations (but also to middlewares if needed). For more than trivial 
-operations you usually want to create a storage package with a concrete `Store` type. This type will hold the database 
-connection pool and provides operations on data, implemented as methods on the Store struct. The `Store` type is 
+operations you'll usually want to create a storage package with a concrete `Store` type. This type will hold the database 
+connection pool and will provide operations on data, implemented as methods on the Store struct. The `Store` type is 
 provided to the service layer.
 
 ```go
@@ -471,26 +471,25 @@ go run ./cmd/cli migrate \
 
 ## Deploy
 The _deploy_ folder contains several files related to the deploy of the application. Note that values and paths in these
-files must be edited with correct values for you specific needs (example: the domain snapvault.ablab.dev will not work 
+files must be edited with correct values for your specific needs (example: the domain snapvault.ablab.dev will not work 
 since it is already owned).
 
-The _nginx_ directory contains configuration files to setup an Nginx instance which will act as a reverse proxy between public
-requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd unit for Prometheus. 
-The _api_ directory contains the systemd unit for the REST API. About the API config file, the deploy process searches for 
-a config file at `conf/api.prod.json` that must be created starting from the example config file. 
+The _nginx_ directory contains configuration files useful to setup a Nginx instance which will act as a reverse
+proxy between public requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd 
+unit for Prometheus. The _api_ directory contains the systemd unit for the REST API. About the API config file, the deploy 
+process searches for a config file at `conf/api.prod.json` that must be created starting from the example config file. 
 
 The makefile contains a command to provision a single machine (`remote/provisioning`), that is, it installs nginx, postgres, 
-prometheus and grafana. The makefile rule will upload all necessary files and execute the `prep.sh` bash script. A second 
+prometheus and grafana. The makefile rule will upload all the necessary files and execute the `prep.sh` bash script. A second 
 command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All necessary
-files are uploaded and the API is started as a systemd unit (all operations are done by the _snapvault_ user). The _deploy_ 
-rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as part of the 
+files are uploaded and the API is started as a systemd unit (all the operations are done by the _snapvault_ user). The _deploy_ 
+rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as a part of the 
 workflow and the `conf/api.prod.json` is uploaded and used as the config file for the deployed API.
 
 Both commands will stop if they don't find the REMOTE_IP env var set (which must be set to the remote machine IP).
 
 Again, values in the deploy directory and in the makefile should be edited with your specific values. Note that **the deploy 
-workflow presented in this project is simplistic because is not the focus of the project**. 
-
+workflow presented in this project it's simplistic because is not the focus of the project**. 
 
 Note: working on Ubuntu 20.04.
 
