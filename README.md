@@ -18,13 +18,13 @@ The project is composed of:
 - deploy scripts and systemd units
 - a lot of comments and in-code explanations
 
-
 ## Architecture 
 
 The public interface of the system is a Nginx instance which acts as a reverse proxy. Nginx redirects HTTP requests to 
 the REST API, which is our Go application. The API has exclusive access to the Postgres database and writes data into 
 the file system (in a specific _storage_ directory). The REST API binds to the loopback interface, so it is not publicly 
-accessible. The API responses flow back through Nginx to reach the clients.
+accessible. The API responses flow back through Nginx to reach the clients. A complete map of the API endpoints could 
+be easily found in the _cmd/api/server.go_ file.
 
 Let's talk about monitoring. The private Prometheus instance is configured to scrape metrics from the instrumented Go 
 application, and it exposes them to the Grafana server, which periodically polls Prometheus. Nginx will redirect requests
@@ -32,7 +32,7 @@ starting with _/grafana_ to the grafana dashboard (protected with its own auth s
 endpoint of the REST API is blocked by Nginx since it exposes the (sensitive) app metrics. Indeed, this endpoint is 
 used by Prometheus to poll the application.
 
-![architecture of the application](./assets/architecture.svg "architecture")
+![architecture of the application](./assets/architecture.svg "architecture") 
 
 ## Project structure
 
@@ -520,7 +520,9 @@ The metrics used are the following.
 
 ## Notes
 
-Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future.
+A live demo is present at: https://snapvault.ablab.dev.
+
+Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future. 
 
 Lines of codes (cloc output):
 
