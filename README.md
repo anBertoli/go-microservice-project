@@ -481,7 +481,7 @@ process searches for a config file at `conf/api.prod.json` that must be created 
 
 The makefile contains a command to provision a single machine (`remote/provisioning`), that is, it installs nginx, postgres, 
 prometheus and grafana. The makefile rule will upload all the necessary files and execute the `prep.sh` bash script. A second 
-command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All necessary
+command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All the necessary
 files are uploaded and the API is started as a systemd unit (all the operations are done by the _snapvault_ user). The _deploy_ 
 rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as a part of the 
 workflow and the `conf/api.prod.json` is uploaded and used as the config file for the deployed API.
