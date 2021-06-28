@@ -26,7 +26,6 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
 	if cfg.DisplayVersion {
 		fmt.Printf("API version: %s\n", version)
 		return
@@ -35,6 +34,7 @@ func main() {
 	// Create the logger to be used throughout the application, specifying the
 	// format of the logs.
 	logger := makeLogger(cfg.Env == "dev").Sugar()
+	logger.Infof("configuration %s", cfg.Expose())
 
 	// Open a pool of connection to the database.
 	db, err := openDB(cfg)

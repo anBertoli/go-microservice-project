@@ -47,7 +47,18 @@ type config struct {
 		TrustedOrigins []string `json:"trusted_origins"`
 	} `json:"cors"`
 	PublicHostname string `json:"public_hostname"`
-	DisplayVersion bool   // not from config file
+	DisplayVersion bool   `json:"-"` // not from config file
+}
+
+// Erase sensitive information and JSON-format the configs. Useful
+// to print the config.
+func (c *config) Expose() string {
+	c.Smtp.Password = ""
+	cfgBytes, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(cfgBytes)
 }
 
 // Parse command line flags and read in the config file at the provided path.

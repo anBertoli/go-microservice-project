@@ -130,7 +130,7 @@ func (app *application) serve() error {
 		shutdownError <- err
 	}()
 
-	app.logger.Infow("starting server",
+	app.logger.Infow("starting HTTP server",
 		"addr", srv.Addr,
 		"env", app.config.Env,
 	)
