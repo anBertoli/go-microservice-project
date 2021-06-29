@@ -1,4 +1,4 @@
-# Snap Vault
+# Go Microservice Project
 
 This microservice project (named Snap Vault) is made to share, illustrate and discuss patterns and best practices for REST APIs and servers
 written in Go. Discussions, new proposals and PRs are encouraged and appreciated. The project is thoroughly commented
