@@ -471,8 +471,7 @@ go run ./cmd/cli migrate \
 
 ## Deploy
 The _deploy_ folder contains several files related to the deploy of the application. Note that values and paths in these
-files must be edited with correct values for your specific needs (example: the domain snapvault.ablab.dev will not work 
-since it is already owned).
+files must be edited with correct values for your specific needs (example: the domain).
 
 The _nginx_ directory contains configuration files useful to setup a Nginx instance which will act as a reverse
 proxy between public requests and our REST API. The _prometheus_ directory contains the configuration file and the systemd 
@@ -482,7 +481,7 @@ process searches for a config file at `conf/api.prod.json` that must be created 
 The makefile contains a command to provision a single machine (`remote/provisioning`), that is, it installs nginx, postgres, 
 prometheus and grafana. The makefile rule will upload all the necessary files and execute the `prep.sh` bash script. A second 
 command could be used to deploy our API (`remote/deploy`) on that machine and run the db migrations. All the necessary
-files are uploaded and the API is started as a systemd unit (all the operations are done by the _snapvault_ user). The _deploy_ 
+files are uploaded and the API is started as a systemd unit (all the operations are done by a specific user). The _deploy_ 
 rule will override and remove the eventual previously deployed instance of the API. The `deploy.sh` will be run as a part of the 
 workflow and the `conf/api.prod.json` is uploaded and used as the config file for the deployed API.
 
@@ -519,8 +518,6 @@ The metrics used are the following.
 
 
 ## Notes
-
-A live demo is present at: https://snapvault.ablab.dev.
 
 Several vital things are still missing, first of all, tests. If it is of interest they could be added in the future. 
 
