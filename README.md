@@ -1,10 +1,10 @@
 # Go Microservice Project
 
-This microservice project (named Snap Vault) is made to share, illustrate and discuss patterns and best practices for REST APIs and servers
+This microservice project is made to share, illustrate and discuss patterns and best practices for REST APIs and servers
 written in Go. Discussions, new proposals and PRs are encouraged and appreciated. The project is thoroughly commented
 in order to illustrate and motivate the logic of the code.
 
-Snap Vault is a simple REST API which performs CRUD operations on galleries and images. The application incorporates
+The project is a simple REST API which performs CRUD operations on galleries and images. The application incorporates
 an authentication system built on top of the concepts of users, keys and permissions. The focus of the project is not
 on the features of the API, it's on the software structure and layout.
 
@@ -12,11 +12,10 @@ The repository contains additional scripts and configuration files which are use
 machine and to monitor the runtime behaviour of the application (with Prometheus + Grafana). 
 
 The project is composed of:
-- the Snap Vault API application
-- the Snap Vault CLI application
+- a REST API application
+- a CLI application
 - database migrations (postgres)
 - deploy scripts and systemd units
-- a lot of comments and in-code explanations
 
 ## Architecture 
 
@@ -263,7 +262,7 @@ Each type of transport has its own peculiarities and nuances, but all the implem
 
 We will implement JSON-over-HTTP adapters for the booking service we defined previously. This layer can be modelled using 
 closures (functions returning HTTP handlers) or using a struct whose methods are HTTP handlers themselves. The choice 
-is not vital. In the Snap Vault project the second approach was followed.
+is not vital. In the project the second approach was followed.
 
 Note how, in the following snippet, the workflow defined above is used (decode from request, call the service API, 
 encode and send response).
@@ -370,7 +369,7 @@ if err != nil {
 }
 ```
 
-In the Snap Vault codebase several transport middlewares were used, all related to HTTP related issues:
+In the codebase several transport middlewares were used, all related to HTTP related issues:
 - metrics 
 - logging
 - rate-limiting
@@ -448,8 +447,8 @@ or it can be compiled and then runned:
 make build
 
 # run the API or the CLI
-./bin/linux/snapvault-api_<git_desc> -config <path/to/config/file>
-./bin/linux/snapvault-cli_<git_desc> 
+./bin/linux/api_<git_desc> -config <path/to/config/file>
+./bin/linux/cli_<git_desc> 
 ```
 
 Under the cmd directory there is also a simple CLI. Currently, it supports only the `migrate` command, but in the future
@@ -500,7 +499,7 @@ includes an instance of Prometheus and an instance of Grafana.
 Prometheus is an open-source systems monitoring and alerting toolkit (written in Go btw). It adopts a pull strategy in 
 order to collect metrics, that is, it must be configured to poll data from specific sources (via HTTP requests). The 
 metrics sources must export the data in a specific format. Different client libraries could be used to instrument
-applications and expose data easily. Prometheus is totally private in the Snap Vault system. Prometheus itself exports
+applications and expose data easily. Prometheus is totally private in the system. Prometheus itself exports
 the collected metrics to be used by other tools.  
 
 Grafana is a metrics visualization tool. It could scrape metrics from different systems, in this case from Prometheus.
