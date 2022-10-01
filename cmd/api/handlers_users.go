@@ -175,7 +175,7 @@ func (app *application) getUserAccountHandler(w http.ResponseWriter, r *http.Req
 	app.sendJSON(w, r, http.StatusOK, env{
 		"user":        authData.User,
 		"keys":        authData.Keys,
-		"permissions": authData.Permissions,
+		"permissions": authData.Perms,
 	}, nil)
 }
 

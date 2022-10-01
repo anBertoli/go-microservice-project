@@ -185,7 +185,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 		Title:       gallery.Title,
 		Description: gallery.Description,
 		Published:   gallery.Published,
-		UserID:      authData.UserID,
+		UserID:      authData.User.ID,
 	})
 	if err != nil {
 		switch {

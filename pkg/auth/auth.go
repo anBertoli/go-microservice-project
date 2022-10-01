@@ -10,9 +10,9 @@ import (
 // Complete data obtained from the authentication process. Note: a user could have
 // more auth keys, each with different permissions.
 type Auth struct {
-	store.User
-	store.Keys
-	store.Permissions
+	User  store.User
+	Keys  store.Keys
+	Perms store.Permissions
 }
 
 // This struct will appropriately query the underlying data source to authenticate
@@ -54,9 +54,9 @@ func (a *Authenticator) Authenticate(plainKey string) (Auth, error) {
 	}
 
 	return Auth{
-		User:        user,
-		Keys:        keys,
-		Permissions: permissions,
+		User:  user,
+		Keys:  keys,
+		Perms: permissions,
 	}, nil
 }
 
@@ -106,7 +106,7 @@ func (a *Authenticator) RequireUserPermissions(ctx *context.Context, permissions
 	if err != nil {
 		return Auth{}, err
 	}
-	if !auth.Permissions.Include(permissions...) {
+	if !auth.Perms.Include(permissions...) {
 		return Auth{}, ErrNoPermission
 	}
 	return auth, nil
