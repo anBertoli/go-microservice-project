@@ -1,3 +1,5 @@
+[![Microservice CI](https://github.com/anBertoli/go-microservice-project/actions/workflows/go_ci.yaml/badge.svg?branch=main)](https://github.com/anBertoli/go-microservice-project/actions/workflows/go_ci.yaml)
+
 # Go Microservice Project
 
 This microservice project is made to share, illustrate and discuss patterns and best practices for REST APIs and servers
