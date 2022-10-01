@@ -314,6 +314,9 @@ func (gs *GalleriesService) streamGallery(ctx context.Context, w io.Writer, gall
 			Name: imageName,
 			Mode: 0666,
 		})
+		if err != nil {
+			return err
+		}
 		_, err = io.Copy(tarWriter, bytes.NewReader(imageBytes))
 		if err != nil {
 			return err
