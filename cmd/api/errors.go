@@ -82,14 +82,6 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.sendJSONError(w, r, errResponse{
-		message: err.Error(),
-		status:  http.StatusBadRequest,
-		err:     err,
-	})
-}
-
 func (app *application) forbiddenResponse(w http.ResponseWriter, r *http.Request) {
 	err := errors.New("you don't have rights to perform this action")
 	app.sendJSONError(w, r, errResponse{

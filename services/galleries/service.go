@@ -185,7 +185,7 @@ func (gs *GalleriesService) Update(ctx context.Context, gallery store.Gallery) (
 		Title:       gallery.Title,
 		Description: gallery.Description,
 		Published:   gallery.Published,
-		UserID:      authData.UserID,
+		UserID:      authData.User.ID,
 	})
 	if err != nil {
 		switch {
@@ -314,6 +314,9 @@ func (gs *GalleriesService) streamGallery(ctx context.Context, w io.Writer, gall
 			Name: imageName,
 			Mode: 0666,
 		})
+		if err != nil {
+			return err
+		}
 		_, err = io.Copy(tarWriter, bytes.NewReader(imageBytes))
 		if err != nil {
 			return err
